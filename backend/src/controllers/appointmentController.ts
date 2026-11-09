@@ -6,6 +6,7 @@ const createAppointmentSchema = z.object({
   patientId: z.string().uuid('ID do paciente inválido'),
   examType: z.enum(VALID_EXAM_TYPES),
   dateTime: z.string().datetime('Data e horário devem estar em formato ISO 8601'),
+  preparationNotes: z.string().optional(),
 });
 
 const listAppointmentsQuerySchema = z.object({

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Appointment, ExamType, EXAM_LABELS } from '../types';
+import { Appointment, EXAM_LABELS } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useAppointments } from '../hooks/useAppointments';
 import { ReportModal } from './ReportModal';
@@ -12,14 +12,13 @@ import {
   RefreshCw,
   HeartPulse,
   Info,
-  ShieldCheck,
 } from 'lucide-react';
 
 export const PatientDashboard: React.FC = () => {
   const { user } = useAuth();
   const { appointments, loading, refetch } = useAppointments();
   const [selectedAppointmentForReport, setSelectedAppointmentForReport] = useState<Appointment | null>(null);
-  const [selectedExamForPreparation, setSelectedExamForPreparation] = useState<ExamType | null>(null);
+  const [selectedAppointmentForPreparation, setSelectedAppointmentForPreparation] = useState<Appointment | null>(null);
 
   const now = new Date();
   const nextAppointment = appointments.find(
@@ -88,7 +87,7 @@ export const PatientDashboard: React.FC = () => {
             {nextAppointment && (
               <>
                 <button
-                  onClick={() => setSelectedExamForPreparation(nextAppointment.examType)}
+                  onClick={() => setSelectedAppointmentForPreparation(nextAppointment)}
                   className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-emerald-100/60 border border-emerald-300 text-emerald-900 text-[11px] font-semibold rounded transition"
                 >
                   <Info className="w-3.5 h-3.5 text-emerald-700" />
@@ -173,12 +172,11 @@ export const PatientDashboard: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Botão de Preparo do Exame */}
                     {!isCancelled && (
                       <button
-                        onClick={() => setSelectedExamForPreparation(appt.examType)}
+                        onClick={() => setSelectedAppointmentForPreparation(appt)}
                         className="inline-flex items-center gap-1 px-2.5 py-1 text-slate-600 hover:text-emerald-800 hover:bg-emerald-50 rounded text-xs font-medium border border-slate-200 transition"
-                        title="Ver instruções de preparo do exame"
+                        title="Ver orientações de preparo cadastradas pela clínica"
                       >
                         <Info className="w-3.5 h-3.5 text-emerald-600" />
                         <span className="hidden sm:inline">Preparo</span>
@@ -219,11 +217,11 @@ export const PatientDashboard: React.FC = () => {
         />
       )}
 
-      {/* Modal Instruções de Preparo do Exame */}
-      {selectedExamForPreparation && (
+      {/* Modal Instruções de Preparo Personalizadas da Clínica */}
+      {selectedAppointmentForPreparation && (
         <ExamPreparationModal
-          examType={selectedExamForPreparation}
-          onClose={() => setSelectedExamForPreparation(null)}
+          appointment={selectedAppointmentForPreparation}
+          onClose={() => setSelectedAppointmentForPreparation(null)}
         />
       )}
     </div>

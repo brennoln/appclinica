@@ -33,6 +33,7 @@ export interface Appointment {
   examType: ExamType;
   dateTime: string;
   status: 'SCHEDULED' | 'CANCELLED';
+  preparationNotes?: string | null;
   patient: {
     id: string;
     name: string;

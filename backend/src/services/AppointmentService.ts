@@ -8,6 +8,7 @@ export interface CreateAppointmentDTO {
   patientId: string;
   examType: ExamType;
   dateTime: string; // ISO 8601
+  preparationNotes?: string;
 }
 
 export class AppointmentService {
@@ -30,7 +31,6 @@ export class AppointmentService {
     }
 
     // Regra 2: Intervalos fixos de 30 minutos em sala única
-    // Avalia os minutos tanto em UTC quanto no relógio do fuso (00 ou 30)
     const minutes = targetDate.getMinutes();
     const seconds = targetDate.getSeconds();
     const ms = targetDate.getMilliseconds();
@@ -58,6 +58,7 @@ export class AppointmentService {
           patientId: dto.patientId,
           examType: dto.examType,
           dateTime: targetDate,
+          preparationNotes: dto.preparationNotes || null,
         },
         tx
       );
@@ -67,7 +68,6 @@ export class AppointmentService {
   async listAppointments(userRole: string, userId: string, filters: { date?: string; patientId?: string }) {
     let effectivePatientId: string | undefined = undefined;
 
-    // Se o usuário logado for paciente, ele SÓ PODE ver os seus próprios agendamentos
     if (userRole === 'PATIENT') {
       effectivePatientId = userId;
     } else if (filters.patientId) {
@@ -78,8 +78,6 @@ export class AppointmentService {
     let endDate: Date | undefined = undefined;
 
     if (filters.date) {
-      // Cria o intervalo de busca cobrindo o dia local (America/Sao_Paulo UTC-3: 03:00Z até dia seguinte 02:59:59.999Z)
-      // e também o dia UTC para máxima compatibilidade
       startDate = new Date(`${filters.date}T00:00:00.000-03:00`);
       endDate = new Date(`${filters.date}T23:59:59.999-03:00`);
       if (isNaN(startDate.getTime())) {
@@ -98,7 +96,7 @@ export class AppointmentService {
         if (!appt.report || appt.report.status !== 'PUBLISHED') {
           return {
             ...appt,
-            report: null, // Paciente não visualiza rascunho
+            report: null,
           };
         }
       }
@@ -113,7 +111,6 @@ export class AppointmentService {
       throw new NotFoundError('Agendamento não encontrado');
     }
 
-    // Regra: Agendamentos com laudo publicado não podem ser cancelados
     if (appointment.report && appointment.report.status === 'PUBLISHED') {
       throw new BadRequestError('Não é possível cancelar um agendamento cujo laudo já foi publicado');
     }

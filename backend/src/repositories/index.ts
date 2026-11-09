@@ -48,7 +48,10 @@ export class AppointmentRepository {
     });
   }
 
-  async create(data: { patientId: string; examType: string; dateTime: Date }, tx?: Prisma.TransactionClient) {
+  async create(
+    data: { patientId: string; examType: string; dateTime: Date; preparationNotes?: string | null },
+    tx?: Prisma.TransactionClient
+  ) {
     const client = tx || this.db;
     return client.appointment.create({
       data: {
@@ -105,7 +108,6 @@ export class AppointmentRepository {
     });
   }
 
-  // Execução atômica com transação
   async transaction<T>(callback: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
     return this.db.$transaction(callback);
   }
@@ -125,6 +127,7 @@ export class ReportRepository {
             examType: true,
             dateTime: true,
             status: true,
+            preparationNotes: true,
           },
         },
       },
