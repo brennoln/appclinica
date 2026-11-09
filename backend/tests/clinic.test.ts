@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/server.js';
 import { prisma } from '../src/config/database.js';
+import bcrypt from 'bcryptjs';
 
 let clinicToken: string;
 let patient1Token: string;
@@ -10,6 +11,43 @@ let patient1Id: string;
 let patient2Id: string;
 
 beforeAll(async () => {
+  // Limpar dados e recriar usuários base para os testes
+  await prisma.report.deleteMany();
+  await prisma.appointment.deleteMany();
+  await prisma.user.deleteMany();
+
+  const hashedPassword = await bcrypt.hash('123456', 10);
+
+  const clinic = await prisma.user.create({
+    data: {
+      name: 'Recepcionista Maria (Clínica)',
+      email: 'clinica@demo.com',
+      password: hashedPassword,
+      role: 'CLINIC',
+    },
+  });
+
+  const p1 = await prisma.user.create({
+    data: {
+      name: 'Carlos Alberto (Paciente 1)',
+      email: 'carlos@demo.com',
+      password: hashedPassword,
+      role: 'PATIENT',
+    },
+  });
+
+  const p2 = await prisma.user.create({
+    data: {
+      name: 'Juliana Silveira (Paciente 2)',
+      email: 'juliana@demo.com',
+      password: hashedPassword,
+      role: 'PATIENT',
+    },
+  });
+
+  patient1Id = p1.id;
+  patient2Id = p2.id;
+
   // Login como Clínica
   const clinicRes = await request(app)
     .post('/api/auth/login')
@@ -21,18 +59,21 @@ beforeAll(async () => {
     .post('/api/auth/login')
     .send({ email: 'carlos@demo.com', password: '123456' });
   patient1Token = p1Res.body.token;
-  patient1Id = p1Res.body.user.id;
 
   // Login como Paciente 2 (Juliana)
   const p2Res = await request(app)
     .post('/api/auth/login')
     .send({ email: 'juliana@demo.com', password: '123456' });
   patient2Token = p2Res.body.token;
-  patient2Id = p2Res.body.user.id;
 });
 
-describe('Desafio Técnico - Testes Automatizados Obrigatórios', () => {
+beforeEach(async () => {
+  // Limpa agendamentos e laudos entre testes para isolamento completo
+  await prisma.report.deleteMany();
+  await prisma.appointment.deleteMany();
+});
 
+describe('Desafio Técnico - Testes de Integração E2E', () => {
   // Cenário 5: Uma tentativa de agendar no passado é rejeitada.
   it('5. Deve rejeitar uma tentativa de agendar no passado', async () => {
     const pastDate = new Date('2020-01-01T10:00:00.000Z');
@@ -52,10 +93,9 @@ describe('Desafio Técnico - Testes Automatizados Obrigatórios', () => {
 
   // Cenário 1: Duas tentativas simultâneas de agendamento no mesmo horário: apenas uma deve ser aceita.
   it('1. Duas tentativas simultâneas de agendamento no mesmo horário: apenas uma deve ser aceita', async () => {
-    // Escolhe um horário bem no futuro para não colidir com o seed
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + 10);
-    targetDate.setHours(14, 0, 0, 0); // 14:00
+    targetDate.setHours(14, 0, 0, 0);
 
     const p1 = request(app)
       .post('/api/appointments')
@@ -78,14 +118,12 @@ describe('Desafio Técnico - Testes Automatizados Obrigatórios', () => {
     const results = await Promise.all([p1, p2]);
     const statuses = results.map((r) => r.status);
 
-    // Um deve ser aceito (201) e o outro rejeitado por conflito (409)
     expect(statuses).toContain(201);
     expect(statuses).toContain(409);
   });
 
   // Cenário 2: Um paciente tenta consultar um laudo de outro paciente: o acesso deve ser negado.
   it('2. Um paciente tenta consultar um laudo de outro paciente: o acesso deve ser negado (403)', async () => {
-    // Cria um agendamento e laudo publicado para o Paciente 1 (Carlos)
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 11);
     futureDate.setHours(10, 0, 0, 0);
@@ -214,7 +252,7 @@ describe('Desafio Técnico - Testes Automatizados Obrigatórios', () => {
     expect(p1After.body.content).toBe('Exame dentro dos padrões da normalidade.');
   });
 
-  // Regra extra: Reutilizar horário de agendamento cancelado
+  // Reutilizar horário de agendamento cancelado
   it('Deve permitir reutilizar o horário de um agendamento cancelado', async () => {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + 14);
