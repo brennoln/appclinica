@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Appointment } from '../types';
 import { api } from '../services/api';
-import { X, FileText, CheckCircle, Save, AlertCircle, Printer } from 'lucide-react';
+import { X, FileText, CheckCircle, Save, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ReportModalProps {
@@ -42,7 +42,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
   const handleSubmit = async (targetStatus: 'DRAFT' | 'PUBLISHED') => {
     if (!title.trim() || !content.trim() || !doctorName.trim()) {
-      toast.warning('Por favor, preencha todos os campos do laudo.');
+      toast.warning('Preencha todos os campos do laudo.');
       return;
     }
 
@@ -66,8 +66,8 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
       toast.success(
         targetStatus === 'PUBLISHED'
-          ? 'Laudo publicado com sucesso! Disponível para o paciente.'
-          : 'Rascunho de laudo salvo com sucesso.'
+          ? 'Laudo publicado com sucesso.'
+          : 'Rascunho de laudo salvo.'
       );
       onSaved();
       onClose();
@@ -78,78 +78,55 @@ export const ReportModal: React.FC<ReportModalProps> = ({
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="report-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-2xs p-4 overflow-y-auto"
     >
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-150">
-        {/* Header acessível com alto contraste */}
-        <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-600 rounded-xl" aria-hidden="true">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
+      <div className="bg-white rounded-lg shadow-lg border border-slate-200 w-full max-w-xl overflow-hidden my-6 animate-in fade-in zoom-in-95 duration-100">
+        <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-slate-700" />
             <div>
-              <h2 id="report-modal-title" className="font-bold text-lg text-white">
-                {isReadOnly ? 'Laudo Médico Oficial' : existingReport ? 'Editar Laudo do Exame' : 'Novo Laudo Médico'}
+              <h2 id="report-modal-title" className="font-semibold text-xs uppercase tracking-wider text-slate-800">
+                {isReadOnly ? 'Laudo Médico Oficial' : existingReport ? 'Editar Laudo' : 'Cadastrar Laudo'}
               </h2>
-              <p className="text-xs text-slate-300">
-                Paciente: <span className="font-semibold text-white">{appointment.patient.name}</span> • Exame: {appointment.examType}
-              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Fechar janela de laudo"
-            className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-400 transition"
+            aria-label="Fechar"
+            className="text-slate-400 hover:text-slate-600 p-1 rounded transition"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Corpo do Laudo */}
-        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+        <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          <div className="text-xs text-slate-500 pb-2 border-b border-slate-100 flex items-center justify-between">
+            <span>Paciente: <strong className="text-slate-800">{appointment.patient.name}</strong></span>
+            <span>Exame: <strong className="text-slate-800">{appointment.examType}</strong></span>
+          </div>
+
           {existingReport?.status === 'PUBLISHED' && (
-            <div
-              role="status"
-              className="p-4 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-900 text-xs rounded-r-lg flex items-center justify-between"
-            >
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                <span>
-                  <strong>Laudo Publicado:</strong> Documento médico oficial disponibilizado para o paciente.
-                </span>
-              </div>
+            <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded flex items-center justify-between">
+              <span className="font-medium flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                Laudo Publicado
+              </span>
               {existingReport.publishedAt && (
-                <span className="text-emerald-700">
-                  {new Date(existingReport.publishedAt).toLocaleString('pt-BR')}
+                <span className="text-[11px] text-emerald-700">
+                  {new Date(existingReport.publishedAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                 </span>
               )}
             </div>
           )}
 
-          {existingReport?.status === 'DRAFT' && isClinic && (
-            <div
-              role="alert"
-              className="p-4 bg-amber-50 border-l-4 border-amber-500 text-amber-900 text-xs rounded-r-lg flex items-center gap-2"
-            >
-              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-              <span>
-                <strong>Modo Rascunho:</strong> Visível apenas para a clínica. O paciente não terá acesso até que seja publicado.
-              </span>
-            </div>
-          )}
-
           <div>
-            <label htmlFor="report-title" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Título do Laudo <span className="text-rose-500">*</span>
+            <label htmlFor="report-title" className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Título do Exame <span className="text-rose-500">*</span>
             </label>
             <input
               id="report-title"
@@ -158,14 +135,14 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               disabled={isReadOnly}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Radiografia do Tórax - Vista PA e Lateral"
-              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 disabled:bg-slate-100 disabled:text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+              placeholder="Ex: Radiografia do Tórax PA"
+              className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 disabled:bg-slate-50 disabled:text-slate-600 focus:ring-1 focus:ring-slate-900 outline-none transition"
             />
           </div>
 
           <div>
-            <label htmlFor="report-doctor" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Profissional Responsável <span className="text-rose-500">*</span>
+            <label htmlFor="report-doctor" className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Médico Responsável (CRM) <span className="text-rose-500">*</span>
             </label>
             <input
               id="report-doctor"
@@ -173,45 +150,44 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               disabled={isReadOnly}
               value={doctorName}
               onChange={(e) => setDoctorName(e.target.value)}
-              placeholder="Ex: Dr. Roberto Guimarães - CRM/SP 123456"
-              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 disabled:bg-slate-100 disabled:text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+              placeholder="Ex: Dr. Roberto Médio - CRM 12345/SP"
+              className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 disabled:bg-slate-50 disabled:text-slate-600 focus:ring-1 focus:ring-slate-900 outline-none transition"
             />
           </div>
 
           <div>
-            <label htmlFor="report-content" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Texto e Parecer Clínico <span className="text-rose-500">*</span>
+            <label htmlFor="report-content" className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Parecer e Conclusão <span className="text-rose-500">*</span>
             </label>
             <textarea
               id="report-content"
-              rows={8}
+              rows={6}
               disabled={isReadOnly}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Insira a descrição detalhada do exame, análise clínica e conclusões..."
-              className="w-full p-3.5 border border-slate-300 rounded-lg text-sm text-slate-900 font-mono disabled:bg-slate-100 disabled:text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition leading-relaxed resize-y"
+              placeholder="Descreva o laudo detalhadamente..."
+              className="w-full p-3 bg-white border border-slate-200 rounded text-xs font-mono text-slate-900 disabled:bg-slate-50 disabled:text-slate-600 focus:ring-1 focus:ring-slate-900 outline-none transition resize-y leading-relaxed"
             />
           </div>
         </div>
 
-        {/* Rodapé e Ações */}
-        <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-between">
           {isReadOnly && existingReport?.status === 'PUBLISHED' ? (
             <button
               type="button"
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 text-slate-700 hover:bg-slate-200 rounded-lg text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-slate-400 transition"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-100 rounded text-xs font-medium text-slate-700 transition"
             >
-              <Printer className="w-4 h-4 text-slate-600" />
-              <span>Imprimir / Salvar PDF</span>
+              <Printer className="w-3.5 h-3.5" />
+              <span>Imprimir</span>
             </button>
           ) : <div />}
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-slate-400 transition"
+              className="px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded text-xs font-medium transition"
             >
               Fechar
             </button>
@@ -222,20 +198,18 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                   type="button"
                   disabled={loading}
                   onClick={() => handleSubmit('DRAFT')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg text-xs font-bold shadow-xs focus:outline-hidden focus:ring-2 focus:ring-amber-400 transition"
+                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded text-xs font-medium transition"
                 >
-                  <Save className="w-4 h-4" />
-                  <span>Salvar Rascunho</span>
+                  Salvar Rascunho
                 </button>
 
                 <button
                   type="button"
                   disabled={loading}
                   onClick={() => handleSubmit('PUBLISHED')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold shadow-xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition"
+                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded text-xs font-medium transition"
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Publicar Laudo Oficial</span>
+                  Publicar Laudo
                 </button>
               </>
             )}

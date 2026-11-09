@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ExamType, EXAM_LABELS, User } from '../types';
 import { api } from '../services/api';
-import { Calendar, Clock, User as UserIcon, Activity, PlusCircle, X, ShieldAlert } from 'lucide-react';
+import { Calendar, Clock, User as UserIcon, Activity, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CreateAppointmentModalProps {
@@ -55,8 +55,6 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
       return;
     }
 
-    // Cria o objeto Date considerando o fuso horário local do usuário (-03:00)
-    // Converte de forma exata para ISO 8601 sem descolamento de 3 horas
     const [hours, minutes] = time.split(':').map(Number);
     const [yearVal, monthVal, dayVal] = date.split('-').map(Number);
     const localDateTime = new Date(yearVal, monthVal - 1, dayVal, hours, minutes, 0, 0);
@@ -91,45 +89,28 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-appt-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-2xs p-4"
     >
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <div className="bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-md">
-              <PlusCircle className="w-6 h-6 text-white" aria-hidden="true" />
-            </div>
-            <div>
-              <h2 id="create-appt-title" className="font-bold text-lg text-white">
-                Novo Agendamento Clínico
-              </h2>
-              <p className="text-xs text-blue-100">Grade de horários da Sala de Diagnóstico</p>
-            </div>
+      <div className="bg-white rounded-lg shadow-lg border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+        <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <div className="flex items-center gap-2">
+            <Plus className="w-4 h-4 text-slate-700" aria-hidden="true" />
+            <h2 id="create-appt-title" className="font-semibold text-xs uppercase tracking-wider text-slate-800">
+              Novo Agendamento
+            </h2>
           </div>
           <button
             onClick={onClose}
-            aria-label="Fechar janela de novo agendamento"
-            className="text-white/80 hover:text-white p-2 rounded-xl hover:bg-white/10 focus:outline-hidden focus:ring-2 focus:ring-white transition"
+            aria-label="Fechar janela"
+            className="text-slate-400 hover:text-slate-600 p-1 rounded transition"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          <div
-            role="note"
-            className="bg-blue-50/70 border border-blue-200/60 p-4 rounded-2xl text-xs text-blue-900 leading-relaxed flex items-start gap-3"
-          >
-            <ShieldAlert className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold mb-0.5">Política de Agendamento</p>
-              Intervalos fixos de 30 minutos em sala única. Fuso horário de referência: <strong>America/Sao_Paulo (UTC-3)</strong>.
-            </div>
-          </div>
-
+        <form onSubmit={handleSubmit} className="p-5 space-y-3.5">
           <div>
-            <label htmlFor="select-patient" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <UserIcon className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" />
+            <label htmlFor="select-patient" className="block text-[11px] font-semibold text-slate-700 mb-1">
               Paciente <span className="text-rose-500">*</span>
             </label>
             <select
@@ -137,7 +118,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
               ref={selectPatientRef}
               value={patientId}
               onChange={(e) => setPatientId(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+              className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition"
             >
               {patients.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -148,15 +129,14 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
           </div>
 
           <div>
-            <label htmlFor="select-exam" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" />
+            <label htmlFor="select-exam" className="block text-[11px] font-semibold text-slate-700 mb-1">
               Tipo de Exame <span className="text-rose-500">*</span>
             </label>
             <select
               id="select-exam"
               value={examType}
               onChange={(e) => setExamType(e.target.value as ExamType)}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+              className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition"
             >
               {Object.entries(EXAM_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>
@@ -166,10 +146,9 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="input-date" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" />
+              <label htmlFor="input-date" className="block text-[11px] font-semibold text-slate-700 mb-1">
                 Data <span className="text-rose-500">*</span>
               </label>
               <input
@@ -178,20 +157,19 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition"
               />
             </div>
 
             <div>
-              <label htmlFor="select-slot" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" />
-                Horário (Local) <span className="text-rose-500">*</span>
+              <label htmlFor="select-slot" className="block text-[11px] font-semibold text-slate-700 mb-1">
+                Horário (Fixo 30m) <span className="text-rose-500">*</span>
               </label>
               <select
                 id="select-slot"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition"
               >
                 {timeSlots.map((slot) => (
                   <option key={slot} value={slot}>
@@ -202,20 +180,20 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
             </div>
           </div>
 
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
+          <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-xl text-xs font-bold focus:outline-hidden focus:ring-2 focus:ring-slate-400 transition"
+              className="px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded text-xs font-medium transition"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition"
+              className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-medium rounded transition"
             >
-              {loading ? 'Confirmando...' : 'Confirmar Agendamento'}
+              {loading ? 'Confirmando...' : 'Confirmar'}
             </button>
           </div>
         </form>

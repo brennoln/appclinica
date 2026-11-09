@@ -11,10 +11,8 @@ import {
   RefreshCw,
   User,
   HeartPulse,
-  Sparkles,
-  ChevronRight,
-  ShieldCheck,
   CheckCircle2,
+  FileCheck,
 } from 'lucide-react';
 
 export const PatientDashboard: React.FC = () => {
@@ -22,108 +20,96 @@ export const PatientDashboard: React.FC = () => {
   const { appointments, loading, refetch } = useAppointments();
   const [selectedAppointmentForReport, setSelectedAppointmentForReport] = useState<Appointment | null>(null);
 
-  // Próximo agendamento ativo
   const now = new Date();
   const nextAppointment = appointments.find(
     (a) => a.status === 'SCHEDULED' && new Date(a.dateTime).getTime() >= now.getTime()
   );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Card Principal de Perfil (Inspirado no app ePaciente) */}
-      <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
-          {/* Avatar Moderno */}
-          <div className="relative">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-600 flex items-center justify-center text-white text-2xl font-black shadow-md shadow-emerald-500/20">
+    <div className="max-w-4xl mx-auto space-y-4">
+      {/* Barra de Perfil e Próximo Horário Compacta */}
+      <section className="bg-white rounded-lg p-5 border border-slate-200 shadow-2xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
               {user?.name.charAt(0)}
             </div>
-            <div className="absolute -bottom-1 -right-1 bg-emerald-500 border-2 border-white w-5 h-5 rounded-full flex items-center justify-center">
-              <ShieldCheck className="w-3 h-3 text-white" />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-bold text-slate-900">{user?.name}</h1>
+                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                  Paciente
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">{user?.email}</p>
             </div>
-          </div>
-
-          <div className="flex-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold tracking-wide uppercase mb-1 border border-emerald-100">
-              <Sparkles className="w-3 h-3 text-emerald-600" />
-              <span>Portal ePaciente</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">{user?.name}</h1>
-            <p className="text-xs text-slate-500 font-medium">{user?.email}</p>
           </div>
 
           <button
             onClick={() => refetch()}
-            aria-label="Atualizar meus exames"
-            className="p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-2xl transition"
+            aria-label="Atualizar exames"
+            className="p-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded transition"
             title="Atualizar dados"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Card Destaque: Próximo Horário (Estilo Moderno de Saúde) */}
-        <div className="mt-6 bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-6 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* Card Destaque: Próximo Horário Compacto */}
+        <div className="mt-4 p-3.5 rounded bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 text-emerald-100 text-xs font-bold uppercase tracking-wider mb-1">
-              <Calendar className="w-4 h-4" />
-              <span>Próximo Horário Agendado</span>
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+              <Calendar className="w-3.5 h-3.5 text-blue-600" />
+              <span>Próximo Exame Agendado</span>
             </div>
 
             {nextAppointment ? (
-              <div>
-                <h2 className="text-lg font-bold text-white">
-                  {EXAM_LABELS[nextAppointment.examType] || nextAppointment.examType}
-                </h2>
-                <p className="text-xs text-emerald-100 flex items-center gap-1.5 mt-1 font-medium">
-                  <Clock className="w-3.5 h-3.5" />
-                  {new Date(nextAppointment.dateTime).toLocaleDateString('pt-BR', {
+              <p className="text-xs text-slate-700">
+                <strong className="font-semibold text-slate-900">{EXAM_LABELS[nextAppointment.examType] || nextAppointment.examType}</strong> em{' '}
+                {new Date(nextAppointment.dateTime).toLocaleDateString('pt-BR', {
+                  timeZone: 'America/Sao_Paulo',
+                })}{' '}
+                às{' '}
+                <strong className="font-semibold text-slate-900">
+                  {new Date(nextAppointment.dateTime).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
                     timeZone: 'America/Sao_Paulo',
-                  })}{' '}
-                  às{' '}
-                  <strong className="text-white">
-                    {new Date(nextAppointment.dateTime).toLocaleTimeString('pt-BR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      timeZone: 'America/Sao_Paulo',
-                    })}
-                  </strong>{' '}
-                  (Horário de Brasília)
-                </p>
-              </div>
+                  })}
+                </strong>
+              </p>
             ) : (
-              <div>
-                <p className="text-sm font-semibold text-white">Não possui horário futuro agendado</p>
-                <p className="text-xs text-emerald-100 mt-0.5">Entre em contato com a clínica para novas marcações</p>
-              </div>
+              <p className="text-xs text-slate-500">Nenhum exame agendado para os próximos dias.</p>
             )}
           </div>
 
           {nextAppointment && (
-            <span className="self-start sm:self-center px-3.5 py-1.5 bg-white/20 backdrop-blur-md rounded-xl text-xs font-bold text-white border border-white/20">
+            <span className="self-start sm:self-center px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold">
               Confirmado
             </span>
           )}
         </div>
       </section>
 
-      {/* Histórico de Exames & Laudos */}
-      <section className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <HeartPulse className="w-5 h-5 text-emerald-600" />
-            <h2 className="text-sm font-bold text-slate-900">Histórico de Exames ({appointments.length})</h2>
+      {/* Histórico de Exames */}
+      <section className="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+          <div className="flex items-center gap-2">
+            <HeartPulse className="w-4 h-4 text-slate-600" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              Meus Agendamentos ({appointments.length})
+            </h2>
           </div>
-          <span className="text-xs text-slate-400 font-medium">Sigilo médico garantido</span>
+          <span className="text-[11px] text-slate-500">Acesso individual e confidencial</span>
         </div>
 
         {loading ? (
-          <div className="p-16 text-center text-slate-400 text-sm animate-pulse">
-            Buscando seus exames no sistema...
+          <div className="p-12 text-center text-slate-400 text-xs">
+            Buscando seus exames...
           </div>
         ) : appointments.length === 0 ? (
-          <div className="p-16 text-center text-slate-400 text-sm">
-            Nenhum registro de exame localizado para este perfil.
+          <div className="p-12 text-center text-slate-400 text-xs">
+            Nenhum exame agendado para este paciente.
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
@@ -147,30 +133,30 @@ export const PatientDashboard: React.FC = () => {
               return (
                 <div
                   key={appt.id}
-                  className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/70 transition"
+                  className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 transition"
                 >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2.5">
-                      <h3 className="font-bold text-slate-900 text-sm">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-900 text-xs">
                         {EXAM_LABELS[appt.examType] || appt.examType}
-                      </h3>
+                      </span>
                       {isCancelled ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
                           Cancelado
                         </span>
                       ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                           Agendado
                         </span>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                       <Clock className="w-3.5 h-3.5 text-slate-400" />
                       <span>
-                        {dateFormatted} às <strong className="text-slate-800">{timeFormatted}</strong>
+                        {dateFormatted} às <strong className="font-medium text-slate-700">{timeFormatted}</strong>
                       </span>
-                      <span>• Sala Principal de Exames</span>
+                      <span>• Sala Principal</span>
                     </div>
                   </div>
 
@@ -178,17 +164,17 @@ export const PatientDashboard: React.FC = () => {
                     {hasPublishedReport ? (
                       <button
                         onClick={() => setSelectedAppointmentForReport(appt)}
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded transition"
                       >
-                        <FileText className="w-4 h-4" />
-                        <span>Abrir Laudo Oficial</span>
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Abrir Laudo</span>
                       </button>
                     ) : isCancelled ? (
-                      <span className="text-xs text-slate-400 font-medium italic">Horário cancelado</span>
+                      <span className="text-[11px] text-slate-400 italic">Cancelado</span>
                     ) : (
-                      <div className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 text-slate-500 text-xs font-semibold rounded-xl border border-slate-100">
-                        <AlertCircle className="w-4 h-4 text-slate-400" />
-                        <span>Laudo em elaboração clínica</span>
+                      <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-600 text-[11px] font-medium rounded border border-slate-200">
+                        <AlertCircle className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Aguardando laudo médico</span>
                       </div>
                     )}
                   </div>
