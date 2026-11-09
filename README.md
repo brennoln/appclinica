@@ -1,140 +1,148 @@
-# 🏥 Desafio Técnico - Agendamento de Exames e Acesso a Laudos
+# 🏥 Sistema de Gestão Clínica - Agendamento de Exames e Acesso a Laudos
 
-Aplicação web completa desenvolvida para gestão de agendamentos de exames clínicos, elaboração/publicação de laudos e portal de consulta para pacientes.
+Aplicação web desenvolvida com foco em **arquitetura limpa**, **acessibilidade (WCAG)**, **robustez de regras de negócio** e **testes automatizados**, desenhada para ser explicada com clareza em sessões de **Live Coding**.
 
 ---
 
 ## 🚀 Tecnologias Utilizadas
 
-- **Frontend:**
-  - React 19 + TypeScript
-  - Vite
-  - Tailwind CSS v4
-  - Lucide React (Ícones)
-  - Axios
+### Frontend
+- **React 19 + TypeScript**: Interfaces declarativas e tipagem estrita de ponta a ponta.
+- **Tailwind CSS v4**: Design system moderno com tokens de alto contraste e estados interativos visíveis.
+- **Custom Hooks (`useAppointments`, `usePatients`)**: Desacoplamento da camada de dados e lógica da UI.
+- **Sonner**: Notificações Toast acessíveis e não intrusivas para o usuário.
+- **Lucide Icons**: Ícones semânticos com atributos `aria-hidden` para leitores de tela.
+- **Acessibilidade (WCAG 2.1 AA)**:
+  - Navegação completa por teclado com armadilha de foco em modais e tecla `Escape` para fechar.
+  - Regiões semânticas (`<main>`, `<section>`, `<article>`, `role="dialog"`, `aria-labelledby`, `aria-describedby`).
+  - Cores com contraste verificado e textos com tamanhos legíveis para pacientes e profissionais.
+  - Modal de confirmação acessível substituindo caixas de diálogo nativas (`window.confirm`).
 
-- **Backend:**
-  - Node.js + TypeScript
-  - Express
-  - Prisma ORM
-  - SQLite (Armazenamento local, sem necessidade de configurar serviços externos)
-  - Zod (Validação de schemas)
-  - JWT (JSON Web Tokens) & Bcrypt (Autenticação e segurança)
-  - Vitest + Supertest (Testes automatizados e de integração)
+### Backend
+- **Node.js + TypeScript + Express**: Servidor HTTP estruturado em arquitetura em camadas (**Controller - Service - Repository**).
+- **Prisma ORM com SQLite**: Persistência relacional sem necessidade de dependências pesadas externas.
+- **Zod**: Validação estrita de contratos de dados em runtime.
+- **JWT & Bcrypt**: Autenticação com hash de senha seguro e autorização por perfis (`CLINIC` e `PATIENT`) validada a nível de rota HTTP.
+- **Vitest & Supertest**: Testes automatizados (unitários com mocks e de integração E2E com banco de dados isolado).
+- **Docker & Docker Compose**: Empacotamento completo para subir a solução em qualquer ambiente com um comando.
 
 ---
 
 ## 🕒 Fuso Horário e Regras Temporais Adotadas
 
-- **Fuso horário adotado:** `America/Sao_Paulo` (UTC-3).
-- **Armazenamento:** Os horários são salvos e manipulados em formato ISO 8601 (UTC) no backend, garantindo consistência e integridade em requisições de API e interfaces de exibição.
-- **Intervalos:** Agendamentos são restritos a **intervalos fixos de 30 minutos** (ex: `09:00`, `09:30`, `10:00`) em uma **sala única**.
-- **Bloqueio no passado:** A API e a interface impedem o agendamento em datas ou horários passados.
-- **Concorrência:** Transações com verificação de colisão garantem que duas requisições simultâneas para o mesmo horário nunca gerem duplicidade (apenas uma é aceita e a outra retorna `409 Conflict`). Reutilização de horários de exames cancelados é permitida.
+- **Fuso horário padrão:** `America/Sao_Paulo` (UTC-3).
+- **Formato de Trânsito:** ISO 8601 UTC nos payloads da API.
+- **Sala Única & Intervalos de 30 minutos:**
+  - O sistema opera com uma única sala de exames.
+  - Intervalos estritamente múltiplos de 30 minutos (`08:00`, `08:30`, `09:00`, etc.).
+  - Tentativas com minutos quebrados (ex: `09:15`) são rejeitadas pela validação de domínio.
+- **Tratamento de Concorrência:**
+  - Bloqueio de agendamento duplicado por transação atômica do Prisma.
+  - Duas requisições simultâneas no mesmo horário: apenas 1 é aprovada (`201 Created`), enquanto a concorrente recebe `409 Conflict`.
+  - Reutilização de horários: Agendamentos cancelados liberam o horário automaticamente para novas marcações.
+- **Bloqueio no Passado:** Agendamentos para datas ou horários anteriores ao momento da requisição são rejeitados (`400 Bad Request`).
 
 ---
 
-## 👥 Perfis de Acesso e Regras de Negócio
+## 📋 Regras de Negócio Implementadas
 
-1. **Equipe da Clínica (`CLINIC`):**
-   - Agenda exames escolhendo paciente cadastrado, tipo de exame (Raio-X, Ultrassom, Ressonância Magnética) e horário.
-   - Consulta e filtra agendamentos por **data** e/ou **paciente**.
-   - Cancela agendamentos (desde que ainda não possuam laudo publicado).
-   - Cadastra laudos com Título, Conteúdo e Nome do Profissional Responsável.
-   - Salva laudos como **Rascunho** (`DRAFT`) ou **Publicado** (`PUBLISHED`).
-   - Edita laudos enquanto forem rascunhos. Laudos já publicados tornam-se imutáveis.
+### Equipe da Clínica (`CLINIC`)
+- Visualiza todos os agendamentos, com filtros por **data** e por **paciente**.
+- Agenda exames escolhendo paciente cadastrado, tipo de exame (`RAIO_X`, `ULTRASSOM`, `RESSONANCIA_MAGNETICA`) e horário.
+- Cancela agendamentos (desde que o laudo **não** tenha sido publicado).
+- Elabora laudos (Título, Parecer Clínico e Nome do Médico).
+- Pode salvar laudo como **Rascunho** (`DRAFT`) ou **Publicar** (`PUBLISHED`).
+- Edita laudos enquanto em rascunho. Laudos publicados são **imutáveis**.
 
-2. **Paciente (`PATIENT`):**
-   - Visualiza estritamente os **seus próprios** agendamentos com data, tipo de exame e situação.
-   - Identifica se o laudo já foi publicado.
-   - **Rascunhos nunca são disponibilizados para o paciente** (bloqueio tanto a nível de listagem quanto na rota individual de detalhe `GET /api/reports/:id`).
-   - **Isolamento de acesso:** Um paciente é estritamente impedido de acessar agendamentos ou laudos de outros pacientes (retorna `403 Forbidden`).
+### Paciente (`PATIENT`)
+- Visualiza **estritamente seus próprios exames** (o backend filtra automaticamente pelo ID do token JWT).
+- Identifica se o laudo já foi liberado.
+- **Proteção de Rascunhos:** Rascunhos **não** são expostos na listagem do paciente nem podem ser acessados via API (`403 Forbidden`).
+- **Isolamento entre Pacientes:** Tentativa de um paciente acessar laudo de outro resulta em `403 Forbidden`.
+- Opção acessível para visualização e impressão do laudo oficial.
 
 ---
 
-## 🔑 Credenciais para Demonstração
+## 🔑 Credenciais para Demonstração (Demo)
 
-O banco de dados de desenvolvimento já conta com dados semeados para testes imediatos:
-
-| Perfil | Nome | E-mail | Senha | Descrição |
+| Perfil | Nome | E-mail | Senha | Cenário Pré-carregado |
 | :--- | :--- | :--- | :--- | :--- |
-| **Clínica** | Recepcionista Maria | `clinica@demo.com` | `123456` | Acesso completo de gestão |
-| **Paciente 1** | Carlos Alberto | `carlos@demo.com` | `123456` | Possui 1 laudo publicado e 1 em rascunho |
-| **Paciente 2** | Juliana Silveira | `juliana@demo.com` | `123456` | Possui 1 agendamento sem laudo |
+| **Clínica** | Maria Recepcionista | `clinica@demo.com` | `123456` | Acesso administrativo completo |
+| **Paciente 1** | Carlos Alberto | `carlos@demo.com` | `123456` | 1 laudo publicado e 1 em rascunho |
+| **Paciente 2** | Juliana Silveira | `juliana@demo.com` | `123456` | 1 agendamento sem laudo |
 
-> **Dica:** Na tela de login há botões de **Acesso Rápido (1 clique)** para alternar entre os perfis instantaneamente.
+> *A tela de login possui botões de 1 clique para login rápido durante a avaliação.*
 
 ---
 
 ## 🛠️ Como Instalar e Executar
 
-### 1. Clonar o repositório
-```bash
-git clone https://github.com/brennoln/appclinica.git
-cd appclinica
-```
+### Opção A: Execução Local Rápida (Recomendada)
 
-### 2. Configurar e Iniciar o Backend
+#### 1. Backend:
 ```bash
 cd backend
 npm install
-
-# Copiar arquivo de variáveis de ambiente
 cp .env.example .env
 
-# Sincronizar banco de dados SQLite e rodar o seed inicial
+# Sincronizar o banco de dados e carregar dados de demonstração
 npx prisma db push
 npm run db:seed
 
-# Iniciar servidor em desenvolvimento (porta 3333)
+# Iniciar servidor (porta 3333)
 npm run dev
 ```
 
-### 3. Configurar e Iniciar o Frontend
+#### 2. Frontend:
 Em outro terminal:
 ```bash
 cd frontend
 npm install
 
-# Iniciar aplicação React (porta 5173)
+# Iniciar aplicação web (porta 5173)
 npm run dev
 ```
-Acesse a aplicação em seu navegador: [http://localhost:5173](http://localhost:5173)
+Acesse no navegador: [http://localhost:5173](http://localhost:5173)
 
 ---
 
-## 🧪 Testes Automatizados
+### Opção B: Execução via Docker Compose
+```bash
+docker-compose up --build
+```
+Acesse no navegador: [http://localhost:5173](http://localhost:5173)
 
-O projeto conta com uma suíte de testes de integração com **Vitest** cobrindo todos os cenários obrigatórios especificados no desafio:
+---
 
-1. **Tentativas simultâneas no mesmo horário:** Apenas uma aceita (`201`), a outra rejeitada (`409 Conflict`).
-2. **Paciente tentando consultar laudo de outro paciente:** Acesso negado com `403 Forbidden`.
-3. **Paciente tentando acessar laudo em rascunho:** Acesso negado com `403 Forbidden`.
-4. **Publicação de laudo:** Laudo em rascunho é publicado pela clínica e passa a ficar acessível para o paciente correto.
-5. **Tentativa de agendamento no passado:** Rejeitada com `400 Bad Request`.
-6. **Reutilização de horário:** Horário de um agendamento cancelado pode ser reutilizado por outro paciente.
+## 🧪 Testes Automatizados (22 Testes)
 
-Para executar os testes:
+A suíte de testes é dividida em testes unitários de serviços com mocks e testes de integração de ponta a ponta:
+
 ```bash
 cd backend
 npm test
 ```
 
----
-
-## 💡 Decisões Técnicas, Limitações e Pendências
-
-### Decisões Técnicas:
-- **Prisma com SQLite:** Escolhido para permitir que qualquer avaliador execute o projeto localmente com `npm run dev` imediatamente, dispensando instalação de instâncias Docker ou servidores PostgreSQL/MySQL externos. A modelagem em TypeScript e schema do Prisma permite migrar para PostgreSQL trocando apenas o provider no arquivo `.env`.
-- **Validação com Zod e Tratamento de Concorrência:** As regras de agendamento são validadas na borda com Zod e persistidas através de transações atômicas no Prisma para evitar condições de corrida (*race conditions*) em acessos concorrentes.
-- **Autorização em Camadas:** O backend não confia no frontend. Toda rota valida JWT e permissões de perfil (`roleMiddleware`).
-
-### Limitações e Pendências Futuras:
-- **Notificações:** Envio de e-mail ou SMS quando um laudo for publicado.
-- **Múltiplas Salas / Médicos:** Expansão do modelo para permitir N salas e especialidades concorrentes.
-- **Exportação de Laudos em PDF:** Geração de documento PDF assinado digitalmente com certificado ICP-Brasil (conforme sugerido no escopo de simplificação do desafio).
+### Cenários Cobertos:
+1. **Concorrência simultânea:** Duas tentativas simultâneas para o mesmo horário aceitam apenas uma (`201`) e rejeitam a outra (`409`).
+2. **Autorização entre pacientes:** Paciente tentando consultar laudo de outro paciente tem acesso negado (`403`).
+3. **Bloqueio de rascunhos para pacientes:** Paciente tentando acessar laudo em rascunho tem acesso negado (`403`).
+4. **Ciclo de vida do laudo:** Laudo em rascunho é publicado pela clínica e passa a ficar acessível para o paciente correto.
+5. **Rejeição no passado:** Tentativa de agendamento em data passada é rejeitada (`400`).
+6. **Reutilização de horário:** Horário de agendamento cancelado é reaproveitado com sucesso.
+7. **Validação temporal:** Bloqueio de agendamentos fora do intervalo de 30 minutos (ex: `10:15`).
+8. **Imutabilidade:** Bloqueio de cancelamento de agendamento com laudo publicado e bloqueio de edição de laudo publicado.
 
 ---
 
-## ⏱️ Tempo Dedicado ao Exercício
-- **Tempo aproximado dedicado:** ~6 horas (planejamento da arquitetura, implementação da API e regras de negócio, testes automatizados e interface com React e Tailwind).
+## 💡 Decisões Técnicas e Arquiteturais
+
+1. **Clean Architecture / Service-Repository:** Os controladores são responsáveis apenas pelo parsing HTTP com Zod. As regras de negócio vivem nos Services, facilitando testes unitários rápidos e isolados sem tocar no banco de dados.
+2. **Tratamento Global de Erros:** Erros herdam de `AppError` com status HTTP definidos explicitamente, tratados por um middleware central.
+3. **Acessibilidade em Primeiro Lugar:** Modais com foco retido, labels visíveis, contrastes verificados e atalhos de teclado.
+4. **Prisma + SQLite:** Agilidade e portabilidade. Nenhuma dependência externa de infraestrutura necessária para testar ou avaliar.
+
+---
+
+## ⏱️ Tempo Dedicado
+- **Tempo total dedicado:** ~7 horas (planejamento, backend com camadas e concorrência, suíte de 22 testes automatizados, interface acessível com React 19 + Tailwind, Dockerfile e documentação completa).
