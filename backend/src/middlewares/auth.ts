@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { UnauthorizedError, ForbiddenError } from '../errors/AppError.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret';
 
@@ -18,12 +19,11 @@ declare global {
   }
 }
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+export function authMiddleware(req: Request, _res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Token de autenticação não fornecido' });
-    return;
+    throw new UnauthorizedError('Token de autenticação não fornecido');
   }
 
   const token = authHeader.split(' ')[1];
@@ -33,20 +33,18 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     req.user = decoded;
     next();
   } catch (err) {
-    res.status(401).json({ error: 'Token inválido ou expirado' });
+    throw new UnauthorizedError('Token inválido ou expirado');
   }
 }
 
 export function roleMiddleware(allowedRoles: ('CLINIC' | 'PATIENT')[]) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user) {
-      res.status(401).json({ error: 'Usuário não autenticado' });
-      return;
+      throw new UnauthorizedError('Usuário não autenticado');
     }
 
     if (!allowedRoles.includes(req.user.role)) {
-      res.status(403).json({ error: 'Acesso negado: permissão insuficiente' });
-      return;
+      throw new ForbiddenError('Acesso negado: permissão insuficiente para este perfil');
     }
 
     next();

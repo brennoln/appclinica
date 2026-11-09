@@ -1,87 +1,28 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import { prisma } from '../config/database.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'default-secret';
+import { AuthService } from '../services/AuthService.js';
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z.string().email('E-mail em formato inválido'),
+  password: z.string().min(1, 'A senha é obrigatória'),
 });
 
-export async function login(req: Request, res: Response): Promise<void> {
-  const result = loginSchema.safeParse(req.body);
-  if (!result.success) {
-    res.status(400).json({ error: 'Dados de login inválidos', details: result.error.errors });
-    return;
-  }
+export class AuthController {
+  constructor(private readonly authService: AuthService = new AuthService()) {}
 
-  const { email, password } = result.data;
+  login = async (req: Request, res: Response): Promise<void> => {
+    const data = loginSchema.parse(req.body);
+    const result = await this.authService.authenticate(data.email, data.password);
+    res.json(result);
+  };
 
-  const user = await prisma.user.findUnique({
-    where: { email },
-  });
+  me = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.authService.getProfile(req.user!.userId);
+    res.json(result);
+  };
 
-  if (!user) {
-    res.status(401).json({ error: 'Credenciais inválidas' });
-    return;
-  }
-
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) {
-    res.status(401).json({ error: 'Credenciais inválidas' });
-    return;
-  }
-
-  const token = jwt.sign(
-    {
-      userId: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    },
-    JWT_SECRET,
-    { expiresIn: '8h' }
-  );
-
-  res.json({
-    token,
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    },
-  });
-}
-
-export async function me(req: Request, res: Response): Promise<void> {
-  if (!req.user) {
-    res.status(401).json({ error: 'Não autorizado' });
-    return;
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: req.user.userId },
-    select: { id: true, name: true, email: true, role: true },
-  });
-
-  if (!user) {
-    res.status(404).json({ error: 'Usuário não encontrado' });
-    return;
-  }
-
-  res.json(user);
-}
-
-export async function listPatients(req: Request, res: Response): Promise<void> {
-  const patients = await prisma.user.findMany({
-    where: { role: 'PATIENT' },
-    select: { id: true, name: true, email: true },
-    orderBy: { name: 'asc' },
-  });
-
-  res.json(patients);
+  listPatients = async (_req: Request, res: Response): Promise<void> => {
+    const patients = await this.authService.getPatients();
+    res.json(patients);
+  };
 }

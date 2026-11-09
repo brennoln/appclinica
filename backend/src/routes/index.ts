@@ -1,34 +1,30 @@
 import { Router } from 'express';
-import { login, me, listPatients } from '../controllers/authController.js';
-import {
-  createAppointment,
-  listAppointments,
-  cancelAppointment,
-} from '../controllers/appointmentController.js';
-import {
-  createReport,
-  updateReport,
-  getReport,
-} from '../controllers/reportController.js';
+import { AuthController } from '../controllers/AuthController.js';
+import { AppointmentController } from '../controllers/AppointmentController.js';
+import { ReportController } from '../controllers/ReportController.js';
 import { authMiddleware, roleMiddleware } from '../middlewares/auth.js';
 
 export const routes = Router();
 
-// Rotas públicas
-routes.post('/auth/login', login);
+const authController = new AuthController();
+const appointmentController = new AppointmentController();
+const reportController = new ReportController();
 
-// Rotas autenticadas (Clínica ou Paciente)
-routes.get('/auth/me', authMiddleware, me);
+// Rotas públicas de autenticação
+routes.post('/auth/login', authController.login);
+
+// Rotas autenticadas gerais
+routes.get('/auth/me', authMiddleware, authController.me);
 
 // Agendamentos
-routes.get('/appointments', authMiddleware, listAppointments);
-routes.post('/appointments', authMiddleware, roleMiddleware(['CLINIC']), createAppointment);
-routes.patch('/appointments/:id/cancel', authMiddleware, roleMiddleware(['CLINIC']), cancelAppointment);
+routes.get('/appointments', authMiddleware, appointmentController.list);
+routes.post('/appointments', authMiddleware, roleMiddleware(['CLINIC']), appointmentController.create);
+routes.patch('/appointments/:id/cancel', authMiddleware, roleMiddleware(['CLINIC']), appointmentController.cancel);
 
-// Pacientes (para o dropdown do agendamento pela clínica)
-routes.get('/patients', authMiddleware, roleMiddleware(['CLINIC']), listPatients);
+// Pacientes (para seleção no painel da clínica)
+routes.get('/patients', authMiddleware, roleMiddleware(['CLINIC']), authController.listPatients);
 
 // Laudos
-routes.get('/reports/:id', authMiddleware, getReport);
-routes.post('/appointments/:appointmentId/report', authMiddleware, roleMiddleware(['CLINIC']), createReport);
-routes.put('/reports/:id', authMiddleware, roleMiddleware(['CLINIC']), updateReport);
+routes.get('/reports/:id', authMiddleware, reportController.getById);
+routes.post('/appointments/:appointmentId/report', authMiddleware, roleMiddleware(['CLINIC']), reportController.create);
+routes.put('/reports/:id', authMiddleware, roleMiddleware(['CLINIC']), reportController.update);

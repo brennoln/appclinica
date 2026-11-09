@@ -1,7 +1,9 @@
+import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { routes } from './routes/index.js';
+import { errorHandler } from './middlewares/errorHandler.js';
 
 dotenv.config();
 
@@ -10,10 +12,10 @@ export const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Documentação do fuso horário na rota de status / info
+// Rota de status e fuso horário documentado
 app.get('/api/info', (_req, res) => {
   res.json({
-    name: 'Clínica API - Agendamentos e Laudos',
+    name: 'Clínica MedVida API - Agendamentos e Laudos',
     timezone: process.env.TIMEZONE || 'America/Sao_Paulo',
     serverTime: new Date().toISOString(),
     status: 'online',
@@ -21,6 +23,9 @@ app.get('/api/info', (_req, res) => {
 });
 
 app.use('/api', routes);
+
+// Middleware global de tratamento de erros
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3333;
 
