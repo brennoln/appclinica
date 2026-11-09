@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Appointment, EXAM_LABELS } from '../types';
+import { Appointment, ExamType, EXAM_LABELS } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useAppointments } from '../hooks/useAppointments';
 import { ReportModal } from './ReportModal';
+import { ExamPreparationModal } from './ExamPreparationModal';
 import {
   Calendar,
   FileText,
@@ -10,12 +11,15 @@ import {
   AlertCircle,
   RefreshCw,
   HeartPulse,
+  Info,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const PatientDashboard: React.FC = () => {
   const { user } = useAuth();
   const { appointments, loading, refetch } = useAppointments();
   const [selectedAppointmentForReport, setSelectedAppointmentForReport] = useState<Appointment | null>(null);
+  const [selectedExamForPreparation, setSelectedExamForPreparation] = useState<ExamType | null>(null);
 
   const now = new Date();
   const nextAppointment = appointments.find(
@@ -35,7 +39,7 @@ export const PatientDashboard: React.FC = () => {
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-bold text-slate-900">{user?.name}</h1>
                 <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  Paciente
+                  Portal do Paciente
                 </span>
               </div>
               <p className="text-xs text-slate-400">{user?.email}</p>
@@ -52,7 +56,7 @@ export const PatientDashboard: React.FC = () => {
           </button>
         </div>
 
-        {/* Destaque Compacto: Próximo Exame */}
+        {/* Destaque Compacto: Próximo Exame + Atalho para Instruções de Preparo */}
         <div className="mt-3 p-3 rounded bg-emerald-50/60 border border-emerald-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div>
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-0.5">
@@ -80,11 +84,22 @@ export const PatientDashboard: React.FC = () => {
             )}
           </div>
 
-          {nextAppointment && (
-            <span className="self-start sm:self-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold">
-              Confirmado
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {nextAppointment && (
+              <>
+                <button
+                  onClick={() => setSelectedExamForPreparation(nextAppointment.examType)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-emerald-100/60 border border-emerald-300 text-emerald-900 text-[11px] font-semibold rounded transition"
+                >
+                  <Info className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Como se preparar</span>
+                </button>
+                <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold">
+                  Confirmado
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </section>
 
@@ -157,7 +172,19 @@ export const PatientDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <div>
+                  <div className="flex items-center gap-2">
+                    {/* Botão de Preparo do Exame */}
+                    {!isCancelled && (
+                      <button
+                        onClick={() => setSelectedExamForPreparation(appt.examType)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-slate-600 hover:text-emerald-800 hover:bg-emerald-50 rounded text-xs font-medium border border-slate-200 transition"
+                        title="Ver instruções de preparo do exame"
+                      >
+                        <Info className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="hidden sm:inline">Preparo</span>
+                      </button>
+                    )}
+
                     {hasPublishedReport ? (
                       <button
                         onClick={() => setSelectedAppointmentForReport(appt)}
@@ -171,7 +198,7 @@ export const PatientDashboard: React.FC = () => {
                     ) : (
                       <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-600 text-[11px] font-medium rounded border border-slate-200">
                         <AlertCircle className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Aguardando laudo médico</span>
+                        <span>Aguardando laudo</span>
                       </div>
                     )}
                   </div>
@@ -189,6 +216,14 @@ export const PatientDashboard: React.FC = () => {
           isClinic={false}
           onClose={() => setSelectedAppointmentForReport(null)}
           onSaved={() => {}}
+        />
+      )}
+
+      {/* Modal Instruções de Preparo do Exame */}
+      {selectedExamForPreparation && (
+        <ExamPreparationModal
+          examType={selectedExamForPreparation}
+          onClose={() => setSelectedExamForPreparation(null)}
         />
       )}
     </div>

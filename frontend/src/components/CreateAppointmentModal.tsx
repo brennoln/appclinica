@@ -6,12 +6,16 @@ import { toast } from 'sonner';
 
 interface CreateAppointmentModalProps {
   patients: User[];
+  initialTime?: string;
+  initialDate?: string;
   onClose: () => void;
   onCreated: () => void;
 }
 
 export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
   patients,
+  initialTime = '09:00',
+  initialDate,
   onClose,
   onCreated,
 }) => {
@@ -20,12 +24,12 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
   const year = tomorrow.getFullYear();
   const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
   const day = String(tomorrow.getDate()).padStart(2, '0');
-  const formattedDate = `${year}-${month}-${day}`;
+  const defaultDate = `${year}-${month}-${day}`;
 
   const [patientId, setPatientId] = useState(patients[0]?.id || '');
   const [examType, setExamType] = useState<ExamType>('RAIO_X');
-  const [date, setDate] = useState(formattedDate);
-  const [time, setTime] = useState('09:00');
+  const [date, setDate] = useState(initialDate || defaultDate);
+  const [time, setTime] = useState(initialTime);
   const [loading, setLoading] = useState(false);
   const selectPatientRef = useRef<HTMLSelectElement>(null);
 
@@ -94,9 +98,9 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
       <div className="bg-white rounded-lg shadow-lg border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-100">
         <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2">
-            <Plus className="w-4 h-4 text-slate-700" aria-hidden="true" />
+            <Plus className="w-4 h-4 text-blue-600" aria-hidden="true" />
             <h2 id="create-appt-title" className="font-semibold text-xs uppercase tracking-wider text-slate-800">
-              Novo Agendamento
+              Novo Agendamento Clínico
             </h2>
           </div>
           <button
@@ -118,7 +122,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
               ref={selectPatientRef}
               value={patientId}
               onChange={(e) => setPatientId(e.target.value)}
-              className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition"
+              className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
             >
               {patients.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -136,7 +140,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
               id="select-exam"
               value={examType}
               onChange={(e) => setExamType(e.target.value as ExamType)}
-              className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition"
+              className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
             >
               {Object.entries(EXAM_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>
@@ -157,7 +161,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition"
+                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
               />
             </div>
 
@@ -169,7 +173,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                 id="select-slot"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition"
+                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
               >
                 {timeSlots.map((slot) => (
                   <option key={slot} value={slot}>
@@ -191,9 +195,9 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-medium rounded transition"
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium rounded transition"
             >
-              {loading ? 'Confirmando...' : 'Confirmar'}
+              {loading ? 'Confirmando...' : 'Confirmar Agendamento'}
             </button>
           </div>
         </form>
