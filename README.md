@@ -1,148 +1,244 @@
-# 🏥 Sistema de Gestão Clínica - Agendamento de Exames e Acesso a Laudos
+# 🏥 MedVida - Sistema Integrado de Agendamento Clínico e Gestão de Laudos
 
-Aplicação web desenvolvida com foco em **arquitetura limpa**, **acessibilidade (WCAG)**, **robustez de regras de negócio** e **testes automatizados**, desenhada para ser explicada com clareza em sessões de **Live Coding**.
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![NodeJS](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
+![Express](https://img.shields.io/badge/Express.js-404D59?style=for-the-badge)
+![Prisma](https://img.shields.io/badge/Prisma_ORM-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
----
+Uma solução full-stack moderna voltada para a área de saúde, projetada para gerenciar o fluxo de agendamento de exames de diagnóstico por imagem e disponibilização segura de laudos médicos entre a equipe da clínica e os pacientes.
 
-## 🚀 Tecnologias Utilizadas
-
-### Frontend
-- **React 19 + TypeScript**: Interfaces declarativas e tipagem estrita de ponta a ponta.
-- **Tailwind CSS v4**: Design system moderno com tokens de alto contraste e estados interativos visíveis.
-- **Custom Hooks (`useAppointments`, `usePatients`)**: Desacoplamento da camada de dados e lógica da UI.
-- **Sonner**: Notificações Toast acessíveis e não intrusivas para o usuário.
-- **Lucide Icons**: Ícones semânticos com atributos `aria-hidden` para leitores de tela.
-- **Acessibilidade (WCAG 2.1 AA)**:
-  - Navegação completa por teclado com armadilha de foco em modais e tecla `Escape` para fechar.
-  - Regiões semânticas (`<main>`, `<section>`, `<article>`, `role="dialog"`, `aria-labelledby`, `aria-describedby`).
-  - Cores com contraste verificado e textos com tamanhos legíveis para pacientes e profissionais.
-  - Modal de confirmação acessível substituindo caixas de diálogo nativas (`window.confirm`).
-
-### Backend
-- **Node.js + TypeScript + Express**: Servidor HTTP estruturado em arquitetura em camadas (**Controller - Service - Repository**).
-- **Prisma ORM com SQLite**: Persistência relacional sem necessidade de dependências pesadas externas.
-- **Zod**: Validação estrita de contratos de dados em runtime.
-- **JWT & Bcrypt**: Autenticação com hash de senha seguro e autorização por perfis (`CLINIC` e `PATIENT`) validada a nível de rota HTTP.
-- **Vitest & Supertest**: Testes automatizados (unitários com mocks e de integração E2E com banco de dados isolado).
-- **Docker & Docker Compose**: Empacotamento completo para subir a solução em qualquer ambiente com um comando.
+O sistema foi construído seguindo princípios de **Clean Architecture**, **Domain-Driven Design (DDD)**, controle atômico de **concorrência**, diretrizes de **acessibilidade (WCAG 2.1 AA)** e uma suíte rigorosa de **testes automatizados**.
 
 ---
 
-## 🕒 Fuso Horário e Regras Temporais Adotadas
+## 🧭 Sumário
 
-- **Fuso horário padrão:** `America/Sao_Paulo` (UTC-3).
-- **Formato de Trânsito:** ISO 8601 UTC nos payloads da API.
-- **Sala Única & Intervalos de 30 minutos:**
-  - O sistema opera com uma única sala de exames.
-  - Intervalos estritamente múltiplos de 30 minutos (`08:00`, `08:30`, `09:00`, etc.).
-  - Tentativas com minutos quebrados (ex: `09:15`) são rejeitadas pela validação de domínio.
-- **Tratamento de Concorrência:**
-  - Bloqueio de agendamento duplicado por transação atômica do Prisma.
-  - Duas requisições simultâneas no mesmo horário: apenas 1 é aprovada (`201 Created`), enquanto a concorrente recebe `409 Conflict`.
-  - Reutilização de horários: Agendamentos cancelados liberam o horário automaticamente para novas marcações.
-- **Bloqueio no Passado:** Agendamentos para datas ou horários anteriores ao momento da requisição são rejeitados (`400 Bad Request`).
-
----
-
-## 📋 Regras de Negócio Implementadas
-
-### Equipe da Clínica (`CLINIC`)
-- Visualiza todos os agendamentos, com filtros por **data** e por **paciente**.
-- Agenda exames escolhendo paciente cadastrado, tipo de exame (`RAIO_X`, `ULTRASSOM`, `RESSONANCIA_MAGNETICA`) e horário.
-- Cancela agendamentos (desde que o laudo **não** tenha sido publicado).
-- Elabora laudos (Título, Parecer Clínico e Nome do Médico).
-- Pode salvar laudo como **Rascunho** (`DRAFT`) ou **Publicar** (`PUBLISHED`).
-- Edita laudos enquanto em rascunho. Laudos publicados são **imutáveis**.
-
-### Paciente (`PATIENT`)
-- Visualiza **estritamente seus próprios exames** (o backend filtra automaticamente pelo ID do token JWT).
-- Identifica se o laudo já foi liberado.
-- **Proteção de Rascunhos:** Rascunhos **não** são expostos na listagem do paciente nem podem ser acessados via API (`403 Forbidden`).
-- **Isolamento entre Pacientes:** Tentativa de um paciente acessar laudo de outro resulta em `403 Forbidden`.
-- Opção acessível para visualização e impressão do laudo oficial.
+1. [Visão Geral & Arquitetura](#-visão-geral--arquitetura)
+2. [Funcionalidades Principais](#-funcionalidades-principais)
+3. [Perfis de Acesso & Segurança](#-perfis-de-acesso--segurança)
+4. [Regras de Negócio & Temporalidade](#-regras-de-negócio--temporalidade)
+5. [Guia Prático de Como Usar o Sistema](#-guia-prático-de-como-usar-o-sistema)
+6. [Instalação e Execução Rápida](#-instalação-e-execução-rápida)
+7. [Ambiente Docker](#-ambiente-docker)
+8. [Suíte de Testes Automatizados](#-suíte-de-testes-automatizados)
+9. [Decisões Técnicas, Limitações e Próximos Passos](#-decisões-técnicas-limitações-e-próximos-passos)
+10. [Variáveis de Ambiente](#-variáveis-de-ambiente)
 
 ---
 
-## 🔑 Credenciais para Demonstração (Demo)
+## 🏗️ Visão Geral & Arquitetura
 
-| Perfil | Nome | E-mail | Senha | Cenário Pré-carregado |
-| :--- | :--- | :--- | :--- | :--- |
-| **Clínica** | Maria Recepcionista | `clinica@demo.com` | `123456` | Acesso administrativo completo |
-| **Paciente 1** | Carlos Alberto | `carlos@demo.com` | `123456` | 1 laudo publicado e 1 em rascunho |
-| **Paciente 2** | Juliana Silveira | `juliana@demo.com` | `123456` | 1 agendamento sem laudo |
+O projeto adota uma arquitetura em camadas desacoplada e modular, garantindo facilidade de manutenção e alta testabilidade:
 
-> *A tela de login possui botões de 1 clique para login rápido durante a avaliação.*
+```
+appclinica/
+├── backend/
+│   ├── src/
+│   │   ├── config/          # Instâncias e configurações de banco (Prisma Client)
+│   │   ├── controllers/     # Camada HTTP fina (validação de schemas via Zod)
+│   │   ├── errors/          # Classes customizadas de exceção (AppError)
+│   │   ├── middlewares/     # Autenticação JWT, controle de RBAC e errorHandler
+│   │   ├── repositories/    # Abstração de persistência e transações atômicas
+│   │   ├── routes/          # Definição e proteção de rotas REST
+│   │   ├── services/        # Regras de negócio puras e validações de domínio
+│   │   └── server.ts        # Bootstrap da aplicação Express
+│   ├── tests/               # Testes unitários de serviços e integração E2E
+│   └── prisma/              # Schema relacional, migrations e seed de dados
+│
+└── frontend/
+    ├── src/
+    │   ├── components/      # Componentes de interface acessíveis (Modais, Dashboards)
+    │   ├── context/         # Autenticação e persistência de sessão JWT
+    │   ├── hooks/           # Custom Hooks para data fetching (useAppointments, usePatients)
+    │   ├── services/        # Cliente Axios configurado com interceptors
+    │   └── types.ts         # Contratos e tipos compartilhados em TypeScript
+```
 
 ---
 
-## 🛠️ Como Instalar e Executar
+## ✨ Funcionalidades Principais
 
-### Opção A: Execução Local Rápida (Recomendada)
+- **Agenda Centralizada em Sala Única:** Gestão de horários em blocos padronizados de 30 minutos para exames como **Raio-X**, **Ultrassom** e **Ressonância Magnética**.
+- **Prevenção de Colisões & Concorrência:** Algoritmo transacional que impede conflitos de agenda para o mesmo horário.
+- **Ciclo de Vida de Laudos Médicos:** Criação e edição em modo **Rascunho** e **Publicação Oficial** com assinatura do médico responsável e registro de data/hora.
+- **Portal Seguro do Paciente:** Visualização confidencial dos exames próprios e download/impressão de laudos oficiais.
+- **Acessibilidade Inclusiva (WCAG 2.1 AA):** Navegação por teclado, foco retido em diálogos, alto contraste e leitores de tela suportados.
 
-#### 1. Backend:
+---
+
+## 🔐 Perfis de Acesso & Segurança
+
+O sistema implementa **RBAC (Role-Based Access Control)** com tokens JWT emitidos no login e validados estritamente no backend em todas as requisições:
+
+| Perfil | Permissões |
+| :--- | :--- |
+| **Equipe da Clínica (`CLINIC`)** | Pode agendar exames para qualquer paciente, consultar/filtrar agendamentos por data ou paciente, cancelar exames pendentes, redigir/editar rascunhos de laudos e publicar laudos oficiais. |
+| **Paciente (`PATIENT`)** | Consulta exclusivamente os seus próprios exames marcados. Consegue visualizar e imprimir apenas laudos oficiais que já foram publicados pela clínica. |
+
+### Contas de Demonstração Rápidas
+
+Para facilitar a experimentação local, o sistema já vem com contas pré-configuradas e atalhos de **1 clique na tela de login**:
+
+| Perfil | E-mail | Senha | Cenário Pré-carregado |
+| :--- | :--- | :--- | :--- |
+| **Clínica** | `clinica@demo.com` | `123456` | Acesso administrativo completo com agenda do dia |
+| **Paciente 1** | `carlos@demo.com` | `123456` | Paciente com 1 laudo publicado e 1 exame em análise clínica |
+| **Paciente 2** | `juliana@demo.com` | `123456` | Paciente com agendamento ativo aguardando realização |
+
+---
+
+## ⏱️ Regras de Negócio & Temporalidade
+
+1. **Fuso Horário Oficial:** O sistema adota explicitamente `America/Sao_Paulo` (UTC-3). O backend processa e armazena os horários em UTC padronizado (ISO 8601), convertendo para a hora local na visualização.
+2. **Intervalos Fixos:** Para manter a previsibilidade das salas de exames, os agendamentos são permitidos exclusivamente em intervalos fixos de 30 minutos (ex: `09:00`, `09:30`, `10:00`).
+3. **Bloqueio no Passado:** Não é permitido marcar exames para datas ou horários anteriores ao momento da requisição.
+4. **Sala Única & Concorrência Real:** Se duas pessoas tentarem reservar o mesmo horário ao mesmo tempo, apenas a primeira solicitação é aceita (`201 Created`), enquanto a segunda recebe conflito (`409 Conflict`).
+5. **Reaproveitamento de Horários:** Caso um agendamento seja cancelado, aquele horário volta a ficar disponível para novos pacientes.
+6. **Integridade de Laudos:**
+   - Cada exame aceita exatamente um laudo médico.
+   - Exames cancelados não podem receber laudos.
+   - Exames com laudo já publicado **não podem ser cancelados**.
+   - Laudos publicados tornam-se imutáveis para garantir a validade jurídica e médica do documento.
+   - Rascunhos de laudo nunca são visíveis para pacientes.
+
+---
+
+## 📖 Guia Prático de Como Usar o Sistema
+
+### 1. Como Administrador / Equipe da Clínica:
+1. Faça login utilizando o botão rápido **Clínica** ou com `clinica@demo.com` / `123456`.
+2. **Criar Agendamento:** Clique no botão azul **Novo Agendamento**, selecione o paciente, o tipo de exame, a data e um horário disponível.
+3. **Filtrar Exames:** Utilize os seletores de **Paciente** ou **Data** no topo para encontrar agendamentos específicos.
+4. **Cadastrar Laudo:** Na tabela, clique em **Cadastrar Laudo**. Preencha o título, o nome do médico responsável e o parecer clínico.
+   - Escolha **Salvar Rascunho** caso ainda precise revisar o texto (o paciente não verá).
+   - Escolha **Publicar Laudo Oficial** quando o documento estiver concluído (ficará imediatamente acessível para o paciente).
+5. **Cancelar Exame:** Clique no botão **Cancelar** em exames que ainda não tenham laudo publicado. Uma confirmação acessível surgirá na tela.
+
+### 2. Como Paciente:
+1. Faça login como **Carlos** (`carlos@demo.com`) ou **Juliana** (`juliana@demo.com`).
+2. **Consultar Exames:** Visualize seu histórico de agendamentos confirmados e cancelados.
+3. **Acessar Laudo Oficial:** Para exames com laudo liberado, clique em **Visualizar Laudo Oficial**.
+4. **Imprimir Laudo:** No modal de leitura, utilize a opção **Imprimir / Salvar PDF** para gerar uma via física ou documento digital do exame.
+
+---
+
+## 🚀 Instalação e Execução Rápida
+
+### Pré-requisitos
+- **Node.js** (v20 ou superior recomendado)
+- **npm** (v9 ou superior)
+
+### Passo 1: Clonar o Repositório
+```bash
+git clone https://github.com/brennoln/appclinica.git
+cd appclinica
+```
+
+### Passo 2: Configurar e Iniciar o Backend
 ```bash
 cd backend
 npm install
+
+# Copiar arquivo de configuração
 cp .env.example .env
 
-# Sincronizar o banco de dados e carregar dados de demonstração
+# Sincronizar o banco SQLite e popular com dados de teste
 npx prisma db push
 npm run db:seed
 
-# Iniciar servidor (porta 3333)
+# Iniciar servidor em desenvolvimento (Porta 3333)
 npm run dev
 ```
 
-#### 2. Frontend:
-Em outro terminal:
+### Passo 3: Configurar e Iniciar o Frontend
+Em uma nova aba de terminal:
 ```bash
 cd frontend
 npm install
 
-# Iniciar aplicação web (porta 5173)
+# Iniciar frontend em desenvolvimento (Porta 5173)
 npm run dev
 ```
-Acesse no navegador: [http://localhost:5173](http://localhost:5173)
+
+Abra seu navegador em: **[http://localhost:5173](http://localhost:5173)**
 
 ---
 
-### Opção B: Execução via Docker Compose
+## 🐳 Ambiente Docker
+
+Você pode executar toda a stack (Frontend + Backend + Banco SQLite) com um único comando utilizando o **Docker Compose**:
+
 ```bash
 docker-compose up --build
 ```
-Acesse no navegador: [http://localhost:5173](http://localhost:5173)
+
+A aplicação estará disponível em:
+- **Frontend:** [http://localhost:5173](http://localhost:5173)
+- **Backend API:** [http://localhost:3333/api](http://localhost:3333/api)
 
 ---
 
-## 🧪 Testes Automatizados (22 Testes)
+## 🧪 Suíte de Testes Automatizados
 
-A suíte de testes é dividida em testes unitários de serviços com mocks e testes de integração de ponta a ponta:
+O sistema conta com uma cobertura completa de **testes automatizados (22 testes)** utilizando **Vitest** e **Supertest**, divididos em testes unitários puros com dublês de teste (mocks) e testes de integração de ponta a ponta:
 
 ```bash
 cd backend
 npm test
 ```
 
-### Cenários Cobertos:
-1. **Concorrência simultânea:** Duas tentativas simultâneas para o mesmo horário aceitam apenas uma (`201`) e rejeitam a outra (`409`).
-2. **Autorização entre pacientes:** Paciente tentando consultar laudo de outro paciente tem acesso negado (`403`).
-3. **Bloqueio de rascunhos para pacientes:** Paciente tentando acessar laudo em rascunho tem acesso negado (`403`).
-4. **Ciclo de vida do laudo:** Laudo em rascunho é publicado pela clínica e passa a ficar acessível para o paciente correto.
-5. **Rejeição no passado:** Tentativa de agendamento em data passada é rejeitada (`400`).
-6. **Reutilização de horário:** Horário de agendamento cancelado é reaproveitado com sucesso.
-7. **Validação temporal:** Bloqueio de agendamentos fora do intervalo de 30 minutos (ex: `10:15`).
-8. **Imutabilidade:** Bloqueio de cancelamento de agendamento com laudo publicado e bloqueio de edição de laudo publicado.
+### Cenários Validados nos Testes:
+- ✅ **Concorrência Atômica:** Duas tentativas simultâneas de agendamento no mesmo horário resultam em apenas uma aprovada (`201`) e a outra rejeitada por conflito (`409`).
+- ✅ **Isolamento de Segurança (IDOR):** Paciente tentando consultar laudo pertencente a outro paciente tem acesso negado (`403 Forbidden`).
+- ✅ **Confidencialidade de Rascunhos:** Paciente tentando acessar um laudo em rascunho de seu próprio exame tem o acesso bloqueado (`403 Forbidden`).
+- ✅ **Publicação e Disponibilidade:** Laudo publicado pela clínica passa a estar imediatamente disponível para o paciente correto.
+- ✅ **Validação Temporal de Passado:** Rejeição de agendamentos em horários passados (`400 Bad Request`).
+- ✅ **Reaproveitamento de Horários:** Horário de um agendamento cancelado é liberado com sucesso para um novo paciente.
+- ✅ **Padronização de Intervalos:** Bloqueio de agendamentos fora da grade de 30 minutos.
+- ✅ **Imutabilidade e Regras de Negócio:** Bloqueio de cancelamento de exames com laudo emitido e bloqueio de edição em laudos já publicados.
 
 ---
 
-## 💡 Decisões Técnicas e Arquiteturais
+## 🧠 Decisões Técnicas, Limitações e Próximos Passos
 
-1. **Clean Architecture / Service-Repository:** Os controladores são responsáveis apenas pelo parsing HTTP com Zod. As regras de negócio vivem nos Services, facilitando testes unitários rápidos e isolados sem tocar no banco de dados.
-2. **Tratamento Global de Erros:** Erros herdam de `AppError` com status HTTP definidos explicitamente, tratados por um middleware central.
-3. **Acessibilidade em Primeiro Lugar:** Modais com foco retido, labels visíveis, contrastes verificados e atalhos de teclado.
-4. **Prisma + SQLite:** Agilidade e portabilidade. Nenhuma dependência externa de infraestrutura necessária para testar ou avaliar.
+### Decisões de Arquitetura:
+- **Prisma ORM com SQLite:** Escolhido propositalmente para permitir que qualquer desenvolvedor ou avaliador execute o projeto localmente com `npm run dev` sem precisar instalar ou configurar PostgreSQL, MySQL ou Docker externos. A tipagem estrita do schema permite migrar para PostgreSQL trocando apenas a flag do provider no arquivo `.env`.
+- **Desacoplamento em Camadas (Service-Repository):** Separação clara entre a camada de transporte (Express/Controllers) e as regras clínicas (Services), permitindo testar toda a lógica de negócio em milissegundos sem tocar no banco de dados.
+- **Acessibilidade em Primeiro Lugar:** Desenvolvimento com foco em semântica HTML, rótulos explícitos e controle de foco em caixas de diálogo modais.
+
+### Limitações Conhecidas & Roadmap Futuro:
+- **Múltiplas Salas e Especialidades:** Atualmente o sistema considera uma única sala física de exames. Uma evolução natural do modelo de dados é incluir a entidade `Room` e `DoctorSchedule`.
+- **Notificações em Tempo Real:** Disparo de notificações via WhatsApp ou E-mail quando um laudo for publicado.
+- **Assinatura Digital ICP-Brasil:** Integração com certificados digitais A1/A3 para assinatura criptográfica de laudos médicos em formato PDF.
 
 ---
 
-## ⏱️ Tempo Dedicado
-- **Tempo total dedicado:** ~7 horas (planejamento, backend com camadas e concorrência, suíte de 22 testes automatizados, interface acessível com React 19 + Tailwind, Dockerfile e documentação completa).
+## ⚙️ Variáveis de Ambiente
+
+As configurações do backend são gerenciadas através do arquivo `.env`:
+
+```env
+# Porta do servidor HTTP
+PORT=3333
+
+# URL de conexão com o banco de dados (SQLite local)
+DATABASE_URL="file:./dev.db"
+
+# Segredo para assinatura de tokens JWT
+JWT_SECRET="chave-secreta-para-ambiente-de-desenvolvimento"
+
+# Fuso horário padrão da aplicação
+TIMEZONE="America/Sao_Paulo"
+```
+
+---
+
+## 👨‍💻 Autor
+
+Desenvolvido por **Brenno Lopes Nóbrega** como projeto de portfólio em desenvolvimento full-stack com TypeScript, React e Node.js.
+
+- **GitHub:** [@brennoln](https://github.com/brennoln)
+- **Repositório:** [https://github.com/brennoln/appclinica](https://github.com/brennoln/appclinica)
