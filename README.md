@@ -16,16 +16,68 @@ O sistema foi construído seguindo princípios de **Clean Architecture**, **Doma
 
 ## 🧭 Sumário
 
-1. [Visão Geral & Arquitetura](#-visão-geral--arquitetura)
-2. [Funcionalidades Principais](#-funcionalidades-principais)
-3. [Perfis de Acesso & Segurança](#-perfis-de-acesso--segurança)
-4. [Regras de Negócio & Temporalidade](#-regras-de-negócio--temporalidade)
-5. [Guia Prático de Como Usar o Sistema](#-guia-prático-de-como-usar-o-sistema)
-6. [Instalação e Execução Rápida](#-instalação-e-execução-rápida)
+1. [Como Iniciar o Projeto com 1 Comando (Novo)](#-como-iniciar-o-projeto-com-1-comando-recomendado)
+2. [Visão Geral & Arquitetura](#-visão-geral--arquitetura)
+3. [Funcionalidades Principais](#-funcionalidades-principais)
+4. [Perfis de Acesso & Segurança](#-perfis-de-acesso--segurança)
+5. [Regras de Negócio & Temporalidade](#-regras-de-negócio--temporalidade)
+6. [Guia Prático de Como Usar o Sistema](#-guia-prático-de-como-usar-o-sistema)
 7. [Ambiente Docker](#-ambiente-docker)
 8. [Suíte de Testes Automatizados](#-suíte-de-testes-automatizados)
 9. [Decisões Técnicas, Limitações e Próximos Passos](#-decisões-técnicas-limitações-e-próximos-passos)
 10. [Variáveis de Ambiente](#-variáveis-de-ambiente)
+
+---
+
+## ⚡ Como Iniciar o Projeto com 1 Comando (Recomendado)
+
+Você pode rodar tanto o **Backend** quanto o **Frontend** simultaneamente a partir da raiz do projeto (`appclinica/`), sem precisar abrir múltiplos terminais manualmente:
+
+### 1. Clonar o repositório e instalar tudo:
+```bash
+git clone https://github.com/brennoln/appclinica.git
+cd appclinica
+npm install
+npm run install:all
+```
+
+### 2. Preparar o banco de dados com dados de teste:
+```bash
+npm run seed
+```
+
+### 3. Iniciar Backend e Frontend juntos:
+```bash
+npm run dev
+```
+
+Pronto! O comando iniciará os dois serviços simultaneamente:
+- **Frontend:** [http://localhost:5173](http://localhost:5173)
+- **Backend API:** [http://localhost:3333/api](http://localhost:3333/api)
+
+---
+
+### 💡 Alternativa: Executando em Terminais Separados
+
+Se preferir rodar cada serviço de forma independente:
+
+#### Terminal 1 (Backend):
+```bash
+cd backend
+npm install
+cp .env.example .env
+npx prisma db push
+npm run db:seed
+npm run dev
+```
+
+#### Terminal 2 (Frontend):
+> ⚠️ **Importante:** Abra uma **nova aba ou janela do terminal**, certifique-se de estar na pasta raiz `appclinica` e entre em `frontend`:
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
@@ -35,6 +87,7 @@ O projeto adota uma arquitetura em camadas desacoplada e modular, garantindo fac
 
 ```
 appclinica/
+├── package.json             # Scripts de orquestração simultânea (npm run dev)
 ├── backend/
 │   ├── src/
 │   │   ├── config/          # Instâncias e configurações de banco (Prisma Client)
@@ -125,51 +178,9 @@ Para facilitar a experimentação local, o sistema já vem com contas pré-confi
 
 ---
 
-## 🚀 Instalação e Execução Rápida
-
-### Pré-requisitos
-- **Node.js** (v20 ou superior recomendado)
-- **npm** (v9 ou superior)
-
-### Passo 1: Clonar o Repositório
-```bash
-git clone https://github.com/brennoln/appclinica.git
-cd appclinica
-```
-
-### Passo 2: Configurar e Iniciar o Backend
-```bash
-cd backend
-npm install
-
-# Copiar arquivo de configuração
-cp .env.example .env
-
-# Sincronizar o banco SQLite e popular com dados de teste
-npx prisma db push
-npm run db:seed
-
-# Iniciar servidor em desenvolvimento (Porta 3333)
-npm run dev
-```
-
-### Passo 3: Configurar e Iniciar o Frontend
-Em uma nova aba de terminal:
-```bash
-cd frontend
-npm install
-
-# Iniciar frontend em desenvolvimento (Porta 5173)
-npm run dev
-```
-
-Abra seu navegador em: **[http://localhost:5173](http://localhost:5173)**
-
----
-
 ## 🐳 Ambiente Docker
 
-Você pode executar toda a stack (Frontend + Backend + Banco SQLite) com um único comando utilizando o **Docker Compose**:
+Você pode executar toda a stack com um único comando utilizando o **Docker Compose**:
 
 ```bash
 docker-compose up --build
@@ -186,7 +197,6 @@ A aplicação estará disponível em:
 O sistema conta com uma cobertura completa de **testes automatizados (22 testes)** utilizando **Vitest** e **Supertest**, divididos em testes unitários puros com dublês de teste (mocks) e testes de integração de ponta a ponta:
 
 ```bash
-cd backend
 npm test
 ```
 
@@ -218,7 +228,7 @@ npm test
 
 ## ⚙️ Variáveis de Ambiente
 
-As configurações do backend são gerenciadas através do arquivo `.env`:
+As configurações do backend são gerenciadas através do arquivo `.env` na pasta `backend/`:
 
 ```env
 # Porta do servidor HTTP
