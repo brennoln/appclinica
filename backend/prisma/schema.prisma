@@ -1,0 +1,61 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// User model: role can be "CLINIC" or "PATIENT"
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   // "CLINIC" | "PATIENT"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments Appointment[] @relation("PatientAppointments")
+
+  @@map("users")
+}
+
+// Appointment model:
+// examType: "RAIO_X" | "ULTRASSOM" | "RESSONANCIA_MAGNETICA"
+// status: "SCHEDULED" | "CANCELLED"
+model Appointment {
+  id        String   @id @default(uuid())
+  patientId String
+  examType  String   // "RAIO_X" | "ULTRASSOM" | "RESSONANCIA_MAGNETICA"
+  dateTime  DateTime // Armazenado em UTC, fuso documentado (ex: America/Sao_Paulo)
+  status    String   @default("SCHEDULED") // "SCHEDULED" | "CANCELLED"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient User    @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
+  report  Report?
+
+  @@index([dateTime])
+  @@index([patientId])
+  @@map("appointments")
+}
+
+// Report model:
+// status: "DRAFT" | "PUBLISHED"
+model Report {
+  id               String    @id @default(uuid())
+  appointmentId    String    @unique // Cada agendamento pode ter apenas um laudo
+  title            String
+  content          String
+  doctorName       String
+  status           String    @default("DRAFT") // "DRAFT" | "PUBLISHED"
+  publishedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
