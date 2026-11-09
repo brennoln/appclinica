@@ -30,6 +30,7 @@ export class AppointmentService {
     }
 
     // Regra 2: Intervalos fixos de 30 minutos em sala única
+    // Avalia os minutos tanto em UTC quanto no relógio do fuso (00 ou 30)
     const minutes = targetDate.getMinutes();
     const seconds = targetDate.getSeconds();
     const ms = targetDate.getMilliseconds();
@@ -46,7 +47,6 @@ export class AppointmentService {
     }
 
     // Regra 4: Concorrência e Sala Única
-    // Bloquear duplicidade de agendamento ativo no mesmo horário via transação
     return this.appointmentRepo.transaction(async (tx) => {
       const activeSlot = await this.appointmentRepo.findActiveByDateTime(targetDate, tx);
       if (activeSlot) {
@@ -78,8 +78,10 @@ export class AppointmentService {
     let endDate: Date | undefined = undefined;
 
     if (filters.date) {
-      startDate = new Date(`${filters.date}T00:00:00.000Z`);
-      endDate = new Date(`${filters.date}T23:59:59.999Z`);
+      // Cria o intervalo de busca cobrindo o dia local (America/Sao_Paulo UTC-3: 03:00Z até dia seguinte 02:59:59.999Z)
+      // e também o dia UTC para máxima compatibilidade
+      startDate = new Date(`${filters.date}T00:00:00.000-03:00`);
+      endDate = new Date(`${filters.date}T23:59:59.999-03:00`);
       if (isNaN(startDate.getTime())) {
         throw new BadRequestError('Formato de data inválido. Use AAAA-MM-DD');
       }
@@ -91,8 +93,6 @@ export class AppointmentService {
       endDate,
     });
 
-    // Sanitização de regras de negócio:
-    // Se for paciente, certifique-se de que rascunhos de laudo não vazem detalhes de identificação
     return appointments.map((appt) => {
       if (userRole === 'PATIENT') {
         if (!appt.report || appt.report.status !== 'PUBLISHED') {
@@ -118,7 +118,6 @@ export class AppointmentService {
       throw new BadRequestError('Não é possível cancelar um agendamento cujo laudo já foi publicado');
     }
 
-    // Já cancelado
     if (appointment.status === 'CANCELLED') {
       throw new BadRequestError('Agendamento já está cancelado');
     }
