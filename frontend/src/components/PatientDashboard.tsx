@@ -30,6 +30,20 @@ export const PatientDashboard: React.FC = () => {
     (a) => a.status === 'SCHEDULED' && new Date(a.dateTime).getTime() >= now.getTime()
   );
 
+  // Calcula horas e minutos restantes para o próximo exame
+  const timeRemainingText = (() => {
+    if (!nextAppointment) return null;
+    const diffMs = new Date(nextAppointment.dateTime).getTime() - now.getTime();
+    if (diffMs <= 0) return 'Horário do exame chegado';
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    if (diffHours > 24) {
+      const days = Math.floor(diffHours / 24);
+      return `Faltam ${days} dia${days > 1 ? 's' : ''}`;
+    }
+    return `Faltam ${diffHours}h ${diffMinutes}m`;
+  })();
+
   // Verifica se o próximo exame ocorre nas próximas 24 horas para alerta de preparo
   const isNextAppointmentNear = nextAppointment
     ? (new Date(nextAppointment.dateTime).getTime() - now.getTime()) <= 24 * 60 * 60 * 1000
@@ -86,6 +100,11 @@ export const PatientDashboard: React.FC = () => {
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-0.5">
               <Calendar className="w-3.5 h-3.5 text-emerald-600" />
               <span>Próximo Exame Marcado</span>
+              {timeRemainingText && (
+                <span className="font-mono text-[9px] px-1.5 py-0.2 rounded bg-emerald-200/80 text-emerald-950 font-bold ml-1">
+                  ⏱ {timeRemainingText}
+                </span>
+              )}
             </div>
 
             {nextAppointment ? (
@@ -250,7 +269,7 @@ export const PatientDashboard: React.FC = () => {
                         </span>
                       ) : (
                         <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Agendado
+                          Confirmado
                         </span>
                       )}
                     </div>
@@ -262,6 +281,13 @@ export const PatientDashboard: React.FC = () => {
                       </span>
                       <span>• Sala de Diagnóstico</span>
                     </div>
+
+                    {/* Previsão transparente de laudo quando pendente */}
+                    {!isCancelled && !hasPublishedReport && (
+                      <p className="text-[10px] text-slate-400">
+                        Previsão de entrega do laudo: em até 24 horas úteis após a realização.
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2">
