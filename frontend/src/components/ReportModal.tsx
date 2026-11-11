@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Appointment } from '../types';
 import { api } from '../services/api';
 import { MEDICAL_REPORT_TEMPLATES } from '../data/reportTemplates';
-import { X, FileText, CheckCircle, Save, Printer, Sparkles, ShieldCheck } from 'lucide-react';
+import { X, FileText, CheckCircle, Save, Printer, Sparkles, ShieldCheck, Copy, Share2, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ReportModalProps {
@@ -94,6 +94,31 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   const reportCode = existingReport
     ? `MED-${existingReport.id.slice(0, 8).toUpperCase()}`
     : 'MED-PREVIEW';
+
+  const handleCopyReport = () => {
+    const reportText = `*LAUDO MÉDICO - CLÍNICA MEDVIDA*
+Autenticação: ${reportCode}
+Paciente: ${appointment.patient.name}
+Exame: ${appointment.examType}
+Data: ${new Date(appointment.dateTime).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+Médico: ${doctorName}
+
+*Título:* ${title}
+*Parecer Diagnóstico:*
+${content}
+
+Documento assinado digitalmente.`;
+
+    navigator.clipboard.writeText(reportText);
+    toast.success('Texto do laudo copiado para a área de transferência!');
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = encodeURIComponent(
+      `*Laudo Médico MedVida*\nPaciente: ${appointment.patient.name}\nExame: ${appointment.examType}\nCódigo de Autenticação: ${reportCode}\n\n*Resultado:* ${title}\n${content.slice(0, 300)}...`
+    );
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  };
 
   return (
     <div
@@ -231,31 +256,70 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             />
           </div>
 
-          {/* Rodapé de Assinatura Médica */}
+          {/* Rodapé de Assinatura Médica e Autenticidade Digital */}
           {existingReport?.status === 'PUBLISHED' && (
-            <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
-              <div className="flex items-center gap-1 text-emerald-700 font-medium">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Documento assinado digitalmente</span>
+            <div className="pt-4 border-t border-slate-200 space-y-3">
+              <div className="flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
+                <div className="flex items-center gap-1.5 text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span>Documento com Assinatura Digital e ICP-Brasil Simulado</span>
+                </div>
+                <div className="text-center sm:text-right font-medium text-slate-800">
+                  <p className="border-t border-slate-400 pt-1 px-4 font-semibold text-slate-900">{existingReport.doctorName}</p>
+                  <p className="text-[10px] text-slate-400">Responsável Técnico / Radiologista</p>
+                </div>
               </div>
-              <div className="text-center sm:text-right font-medium text-slate-800">
-                <p className="border-t border-slate-400 pt-1 px-4">{existingReport.doctorName}</p>
-                <p className="text-[10px] text-slate-400">Responsável Técnico</p>
+
+              {/* Selo de Verificação com Código de Autenticidade */}
+              <div className="p-2.5 rounded bg-slate-100/80 border border-slate-200 flex items-center justify-between text-[10px] text-slate-600">
+                <div className="flex items-center gap-2">
+                  <QrCode className="w-4 h-4 text-slate-600" />
+                  <div>
+                    <span className="font-semibold text-slate-800">Validação de Integridade: </span>
+                    <span className="font-mono text-slate-700">{reportCode}</span>
+                    <p className="text-[9px] text-slate-400">A integridade deste laudo pode ser confirmada no portal MedVida.</p>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded bg-white text-emerald-800 font-bold border border-slate-200">
+                  VÁLIDO
+                </span>
               </div>
             </div>
           )}
         </div>
 
-        <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-between">
-          {isReadOnly && existingReport?.status === 'PUBLISHED' ? (
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-100 rounded text-xs font-medium text-slate-700 transition"
-            >
-              <Printer className="w-3.5 h-3.5 text-slate-600" />
-              <span>Imprimir / Salvar PDF</span>
-            </button>
+        <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          {existingReport?.status === 'PUBLISHED' ? (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-100 rounded text-xs font-medium text-slate-700 transition"
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-600" />
+                <span>Imprimir / PDF</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCopyReport}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-100 rounded text-xs font-medium text-slate-700 transition"
+                title="Copiar texto completo do laudo"
+              >
+                <Copy className="w-3.5 h-3.5 text-slate-600" />
+                <span>Copiar Laudo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleShareWhatsApp}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded text-xs font-medium transition"
+                title="Compartilhar resumo via WhatsApp"
+              >
+                <Share2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>WhatsApp</span>
+              </button>
+            </div>
           ) : <div />}
 
           <div className="flex items-center gap-2">

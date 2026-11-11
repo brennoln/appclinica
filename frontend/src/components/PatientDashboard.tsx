@@ -12,6 +12,9 @@ import {
   RefreshCw,
   HeartPulse,
   Info,
+  Search,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
 
 export const PatientDashboard: React.FC = () => {
@@ -20,18 +23,30 @@ export const PatientDashboard: React.FC = () => {
   const [selectedAppointmentForReport, setSelectedAppointmentForReport] = useState<Appointment | null>(null);
   const [selectedAppointmentForPreparation, setSelectedAppointmentForPreparation] = useState<Appointment | null>(null);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'PENDING'>('ALL');
+  const [searchExam, setSearchExam] = useState<string>('');
 
   const now = new Date();
   const nextAppointment = appointments.find(
     (a) => a.status === 'SCHEDULED' && new Date(a.dateTime).getTime() >= now.getTime()
   );
 
+  // Verifica se o próximo exame ocorre nas próximas 24 horas para alerta de preparo
+  const isNextAppointmentNear = nextAppointment
+    ? (new Date(nextAppointment.dateTime).getTime() - now.getTime()) <= 24 * 60 * 60 * 1000
+    : false;
+
   const publishedCount = appointments.filter((a) => a.report?.status === 'PUBLISHED').length;
   const pendingCount = appointments.filter((a) => a.status === 'SCHEDULED' && !a.report).length;
 
   const filteredAppointments = appointments.filter((appt) => {
-    if (statusFilter === 'PUBLISHED') return appt.report?.status === 'PUBLISHED';
-    if (statusFilter === 'PENDING') return appt.status === 'SCHEDULED' && !appt.report;
+    if (statusFilter === 'PUBLISHED' && appt.report?.status !== 'PUBLISHED') return false;
+    if (statusFilter === 'PENDING' && (appt.status !== 'SCHEDULED' || appt.report)) return false;
+
+    if (searchExam.trim()) {
+      const term = searchExam.toLowerCase();
+      const examName = (EXAM_LABELS[appt.examType] || appt.examType).toLowerCase();
+      return examName.includes(term);
+    }
     return true;
   });
 
@@ -110,6 +125,24 @@ export const PatientDashboard: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Alerta de Preparo Próximo (se exame for em menos de 24h) */}
+        {nextAppointment && isNextAppointmentNear && (
+          <div className="mt-2.5 p-2.5 rounded bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                <strong>Atenção:</strong> Seu exame ocorrerá nas próximas 24 horas. Verifique se há exigência de jejum ou roupas específicas.
+              </span>
+            </div>
+            <button
+              onClick={() => setSelectedAppointmentForPreparation(nextAppointment)}
+              className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline shrink-0"
+            >
+              Ver Recomendações
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Histórico de Exames */}
@@ -122,41 +155,55 @@ export const PatientDashboard: React.FC = () => {
             </h2>
           </div>
 
-          {/* Filtros rápidos do Paciente */}
-          <div className="flex items-center gap-1 bg-white p-0.5 rounded border border-emerald-200/80 text-[11px]">
-            <button
-              type="button"
-              onClick={() => setStatusFilter('ALL')}
-              className={`px-2.5 py-1 rounded font-semibold transition ${
-                statusFilter === 'ALL'
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-slate-600 hover:bg-emerald-50'
-              }`}
-            >
-              Todos ({appointments.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('PUBLISHED')}
-              className={`px-2.5 py-1 rounded font-semibold transition ${
-                statusFilter === 'PUBLISHED'
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-slate-600 hover:bg-emerald-50'
-              }`}
-            >
-              Laudos Liberados ({publishedCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('PENDING')}
-              className={`px-2.5 py-1 rounded font-semibold transition ${
-                statusFilter === 'PENDING'
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-slate-600 hover:bg-emerald-50'
-              }`}
-            >
-              Aguardando ({pendingCount})
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Campo de Busca por Tipo de Exame */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Buscar exame..."
+                value={searchExam}
+                onChange={(e) => setSearchExam(e.target.value)}
+                className="pl-7 pr-2.5 py-1 bg-white border border-emerald-200/90 rounded text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-600 w-36 sm:w-44"
+              />
+              <Search className="w-3.5 h-3.5 text-emerald-600 absolute left-2 top-2 pointer-events-none" />
+            </div>
+
+            {/* Filtros rápidos do Paciente */}
+            <div className="flex items-center gap-1 bg-white p-0.5 rounded border border-emerald-200/80 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ALL')}
+                className={`px-2 py-0.5 rounded font-semibold transition ${
+                  statusFilter === 'ALL'
+                    ? 'bg-emerald-600 text-white'
+                    : 'text-slate-600 hover:bg-emerald-50'
+                }`}
+              >
+                Todos ({appointments.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('PUBLISHED')}
+                className={`px-2 py-0.5 rounded font-semibold transition ${
+                  statusFilter === 'PUBLISHED'
+                    ? 'bg-emerald-600 text-white'
+                    : 'text-slate-600 hover:bg-emerald-50'
+                }`}
+              >
+                Laudados ({publishedCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('PENDING')}
+                className={`px-2 py-0.5 rounded font-semibold transition ${
+                  statusFilter === 'PENDING'
+                    ? 'bg-emerald-600 text-white'
+                    : 'text-slate-600 hover:bg-emerald-50'
+                }`}
+              >
+                Aguardando ({pendingCount})
+              </button>
+            </div>
           </div>
         </div>
 
