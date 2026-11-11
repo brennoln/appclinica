@@ -128,6 +128,16 @@ export class AppointmentRepository {
     });
   }
 
+  async confirmAttendance(id: string, confirmedAt: Date) {
+    return this.db.appointment.update({
+      where: { id },
+      data: { confirmedAt },
+      include: {
+        patient: { select: { id: true, name: true, email: true } },
+      },
+    });
+  }
+
   async transaction<T>(callback: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
     return this.db.$transaction(callback);
   }

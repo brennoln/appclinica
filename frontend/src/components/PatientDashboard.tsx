@@ -15,7 +15,10 @@ import {
   Search,
   AlertTriangle,
   CheckCircle2,
+  Check,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { api } from '../services/api';
 
 export const PatientDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -24,6 +27,7 @@ export const PatientDashboard: React.FC = () => {
   const [selectedAppointmentForPreparation, setSelectedAppointmentForPreparation] = useState<Appointment | null>(null);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'PENDING'>('ALL');
   const [searchExam, setSearchExam] = useState<string>('');
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   const now = new Date();
   const nextAppointment = appointments.find(
@@ -43,6 +47,27 @@ export const PatientDashboard: React.FC = () => {
     }
     return `Faltam ${diffHours}h ${diffMinutes}m`;
   })();
+
+  // Verifica se a confirmação de presença está liberada (máximo 48 horas / 2 dias antes do exame)
+  const canConfirmAttendance = (appt: Appointment) => {
+    if (appt.confirmedAt) return false;
+    const diffMs = new Date(appt.dateTime).getTime() - now.getTime();
+    const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
+    return diffMs > 0 && diffMs <= twoDaysInMs;
+  };
+
+  const handleConfirmAttendance = async (appointmentId: string) => {
+    setConfirmingId(appointmentId);
+    try {
+      await api.patch(`/appointments/${appointmentId}/confirm`);
+      toast.success('Presença confirmada com sucesso! A equipe da clínica já foi notificada.');
+      refetch();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Erro ao confirmar presença.');
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   // Verifica se o próximo exame ocorre nas próximas 24 horas para alerta de preparo
   const isNextAppointmentNear = nextAppointment
@@ -127,7 +152,7 @@ export const PatientDashboard: React.FC = () => {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {nextAppointment && (
               <>
                 <button
@@ -137,9 +162,29 @@ export const PatientDashboard: React.FC = () => {
                   <Info className="w-3.5 h-3.5 text-emerald-700" />
                   <span>Como se preparar</span>
                 </button>
-                <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold">
-                  Confirmado
-                </span>
+
+                {nextAppointment.confirmedAt ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold">
+                    <Check className="w-3 h-3 text-emerald-700" /> Presença Confirmada
+                  </span>
+                ) : canConfirmAttendance(nextAppointment) ? (
+                  <button
+                    disabled={confirmingId === nextAppointment.id}
+                    onClick={() => handleConfirmAttendance(nextAppointment.id)}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-[11px] font-bold shadow-2xs transition"
+                    title="Confirmar que você comparecerá ao exame"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>{confirmingId === nextAppointment.id ? 'Confirmando...' : 'Confirmar Presença'}</span>
+                  </button>
+                ) : (
+                  <span
+                    className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-medium"
+                    title="A confirmação de presença é liberada 2 dias antes do exame"
+                  >
+                    Confirmação abre em 48h
+                  </span>
+                )}
               </>
             )}
           </div>
@@ -267,9 +312,13 @@ export const PatientDashboard: React.FC = () => {
                         <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
                           Cancelado
                         </span>
+                      ) : appt.confirmedAt ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-0.5">
+                          <Check className="w-2.5 h-2.5" /> Presença Confirmada
+                        </span>
                       ) : (
                         <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Confirmado
+                          Agendado
                         </span>
                       )}
                     </div>

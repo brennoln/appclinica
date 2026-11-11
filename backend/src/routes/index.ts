@@ -21,6 +21,7 @@ routes.get('/appointments', authMiddleware, appointmentController.list);
 routes.post('/appointments', authMiddleware, roleMiddleware(['CLINIC']), appointmentController.create);
 routes.patch('/appointments/:id/cancel', authMiddleware, roleMiddleware(['CLINIC']), appointmentController.cancel);
 routes.patch('/appointments/:id/preparation', authMiddleware, roleMiddleware(['CLINIC']), appointmentController.updatePreparation);
+routes.patch('/appointments/:id/confirm', authMiddleware, roleMiddleware(['PATIENT']), appointmentController.confirm);
 
 // Pacientes (para seleção e cadastro rápido no painel da clínica)
 routes.get('/patients', authMiddleware, roleMiddleware(['CLINIC']), authController.listPatients);

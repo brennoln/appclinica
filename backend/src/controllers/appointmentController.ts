@@ -49,4 +49,10 @@ export class AppointmentController {
     const updated = await this.appointmentService.updatePreparationNotes(id, preparationNotes);
     res.json(updated);
   };
+
+  confirm = async (req: Request, res: Response): Promise<void> => {
+    const id = String(req.params.id);
+    const updated = await this.appointmentService.confirmAttendance(id, req.user!.userId);
+    res.json(updated);
+  };
 }

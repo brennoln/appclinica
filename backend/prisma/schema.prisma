@@ -33,6 +33,7 @@ model Appointment {
   dateTime         DateTime  // Armazenado em UTC, fuso documentado (ex: America/Sao_Paulo)
   status           String    @default("SCHEDULED") // "SCHEDULED" | "CANCELLED"
   preparationNotes String?   // Orientações de preparo passadas pela clínica
+  confirmedAt      DateTime? // Data/hora da confirmação ativa de presença pelo paciente
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

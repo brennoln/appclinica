@@ -135,4 +135,38 @@ export class AppointmentService {
 
     return this.appointmentRepo.updatePreparationNotes(appointmentId, preparationNotes);
   }
+
+  async confirmAttendance(appointmentId: string, patientId: string) {
+    const appointment = await this.appointmentRepo.findById(appointmentId);
+
+    if (!appointment) {
+      throw new NotFoundError('Agendamento não encontrado');
+    }
+
+    if (appointment.patientId !== patientId) {
+      throw new BadRequestError('Você só pode confirmar a presença dos seus próprios exames');
+    }
+
+    if (appointment.status === 'CANCELLED') {
+      throw new BadRequestError('Não é possível confirmar presença em um agendamento cancelado');
+    }
+
+    // Regra estrita: só permite confirmar a partir de 2 dias antes do exame
+    const now = new Date();
+    const apptDate = new Date(appointment.dateTime);
+    const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
+    const diff = apptDate.getTime() - now.getTime();
+
+    if (diff > twoDaysInMs) {
+      throw new BadRequestError(
+        'A confirmação de presença só é liberada a partir de 2 dias (48 horas) antes do exame para garantir pontualidade.'
+      );
+    }
+
+    if (diff < 0) {
+      throw new BadRequestError('Não é possível confirmar a presença de um exame que já ocorreu');
+    }
+
+    return this.appointmentRepo.confirmAttendance(appointmentId, now);
+  }
 }

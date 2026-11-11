@@ -34,6 +34,7 @@ export interface Appointment {
   dateTime: string;
   status: 'SCHEDULED' | 'CANCELLED';
   preparationNotes?: string | null;
+  confirmedAt?: string | null;
   patient: {
     id: string;
     name: string;

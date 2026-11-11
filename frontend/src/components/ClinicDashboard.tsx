@@ -28,6 +28,8 @@ export const ClinicDashboard: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
+  // Status operacional da sala única gerenciado pela recepção
+  const [roomStatus, setRoomStatus] = useState<'NORMAL' | 'DELAYED_15' | 'DELAYED_30'>('NORMAL');
 
   // Slot selecionado para agendamento rápido
   const [slotToBook, setSlotToBook] = useState<string | null>(null);
@@ -260,9 +262,54 @@ export const ClinicDashboard: React.FC = () => {
           )}
         </div>
 
-        <span className="text-[11px] text-slate-500 font-medium">
-          Sala Única de Exames (Slots de 30m)
-        </span>
+        {/* Gerenciamento Logístico da Sala Única (Controle de Atrasos Operacionais) */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-slate-500 font-medium">Fluxo da Sala:</span>
+          <div className="flex items-center bg-slate-100 p-0.5 rounded border border-slate-200">
+            <button
+              type="button"
+              onClick={() => {
+                setRoomStatus('NORMAL');
+                toast.success('Sala Única com operação pontual normalizada.');
+              }}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                roomStatus === 'NORMAL'
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-emerald-700'
+              }`}
+            >
+              Em Dia
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRoomStatus('DELAYED_15');
+                toast.warning('Atraso operacional de 15 minutos informado.');
+              }}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                roomStatus === 'DELAYED_15'
+                  ? 'bg-amber-500 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-amber-700'
+              }`}
+            >
+              Atraso ~15m
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRoomStatus('DELAYED_30');
+                toast.error('Atraso operacional de 30 minutos informado.');
+              }}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                roomStatus === 'DELAYED_30'
+                  ? 'bg-rose-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-rose-700'
+              }`}
+            >
+              Atraso ~30m
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* Conteúdo Dinâmico: Visão Tabela ou Visão Linha do Tempo */}
@@ -361,6 +408,10 @@ export const ClinicDashboard: React.FC = () => {
                           {isCancelled ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
                               Cancelado
+                            </span>
+                          ) : appt.confirmedAt ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300" title={`Confirmado em ${new Date(appt.confirmedAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`}>
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Presença OK
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">

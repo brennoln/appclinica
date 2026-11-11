@@ -169,9 +169,15 @@ export const DayTimelineView: React.FC<DayTimelineViewProps> = ({
                       <Clock className="w-3 h-3 text-rose-600" />
                       {slot}
                     </span>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-200/80 text-rose-900">
-                      Ocupado
-                    </span>
+                    {appt.confirmedAt ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-200 text-emerald-950 flex items-center gap-0.5" title="Presença confirmada pelo paciente">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-700" /> Confirmado
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-200/80 text-rose-900">
+                        Ocupado
+                      </span>
+                    )}
                   </div>
                   <p className="font-semibold text-slate-900 text-xs truncate" title={appt.patient.name}>
                     {appt.patient.name}
