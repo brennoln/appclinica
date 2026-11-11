@@ -19,11 +19,21 @@ export const PatientDashboard: React.FC = () => {
   const { appointments, loading, refetch } = useAppointments();
   const [selectedAppointmentForReport, setSelectedAppointmentForReport] = useState<Appointment | null>(null);
   const [selectedAppointmentForPreparation, setSelectedAppointmentForPreparation] = useState<Appointment | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'PENDING'>('ALL');
 
   const now = new Date();
   const nextAppointment = appointments.find(
     (a) => a.status === 'SCHEDULED' && new Date(a.dateTime).getTime() >= now.getTime()
   );
+
+  const publishedCount = appointments.filter((a) => a.report?.status === 'PUBLISHED').length;
+  const pendingCount = appointments.filter((a) => a.status === 'SCHEDULED' && !a.report).length;
+
+  const filteredAppointments = appointments.filter((appt) => {
+    if (statusFilter === 'PUBLISHED') return appt.report?.status === 'PUBLISHED';
+    if (statusFilter === 'PENDING') return appt.status === 'SCHEDULED' && !appt.report;
+    return true;
+  });
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
@@ -104,27 +114,63 @@ export const PatientDashboard: React.FC = () => {
 
       {/* Histórico de Exames */}
       <section className="bg-white rounded-lg border border-slate-200/90 shadow-2xs overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-emerald-50/30">
+        <div className="px-4 py-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-emerald-50/30">
           <div className="flex items-center gap-2">
             <HeartPulse className="w-4 h-4 text-emerald-600" />
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              Meus Exames ({appointments.length})
+              Meus Exames e Resultados
             </h2>
           </div>
-          <span className="text-[11px] text-slate-500 font-medium">Acesso individual e confidencial</span>
+
+          {/* Filtros rápidos do Paciente */}
+          <div className="flex items-center gap-1 bg-white p-0.5 rounded border border-emerald-200/80 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('ALL')}
+              className={`px-2.5 py-1 rounded font-semibold transition ${
+                statusFilter === 'ALL'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-slate-600 hover:bg-emerald-50'
+              }`}
+            >
+              Todos ({appointments.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('PUBLISHED')}
+              className={`px-2.5 py-1 rounded font-semibold transition ${
+                statusFilter === 'PUBLISHED'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-slate-600 hover:bg-emerald-50'
+              }`}
+            >
+              Laudos Liberados ({publishedCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('PENDING')}
+              className={`px-2.5 py-1 rounded font-semibold transition ${
+                statusFilter === 'PENDING'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-slate-600 hover:bg-emerald-50'
+              }`}
+            >
+              Aguardando ({pendingCount})
+            </button>
+          </div>
         </div>
 
         {loading ? (
           <div className="p-12 text-center text-slate-400 text-xs">
             Buscando seus exames...
           </div>
-        ) : appointments.length === 0 ? (
+        ) : filteredAppointments.length === 0 ? (
           <div className="p-12 text-center text-slate-400 text-xs">
-            Nenhum exame agendado para este paciente.
+            Nenhum exame encontrado para o filtro selecionado.
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {appointments.map((appt) => {
+            {filteredAppointments.map((appt) => {
               const dateObj = new Date(appt.dateTime);
               const isCancelled = appt.status === 'CANCELLED';
               const hasPublishedReport = appt.report && appt.report.status === 'PUBLISHED';

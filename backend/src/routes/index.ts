@@ -20,9 +20,11 @@ routes.get('/auth/me', authMiddleware, authController.me);
 routes.get('/appointments', authMiddleware, appointmentController.list);
 routes.post('/appointments', authMiddleware, roleMiddleware(['CLINIC']), appointmentController.create);
 routes.patch('/appointments/:id/cancel', authMiddleware, roleMiddleware(['CLINIC']), appointmentController.cancel);
+routes.patch('/appointments/:id/preparation', authMiddleware, roleMiddleware(['CLINIC']), appointmentController.updatePreparation);
 
-// Pacientes (para seleção no painel da clínica)
+// Pacientes (para seleção e cadastro rápido no painel da clínica)
 routes.get('/patients', authMiddleware, roleMiddleware(['CLINIC']), authController.listPatients);
+routes.post('/patients', authMiddleware, roleMiddleware(['CLINIC']), authController.createPatient);
 
 // Laudos
 routes.get('/reports/:id', authMiddleware, reportController.getById);

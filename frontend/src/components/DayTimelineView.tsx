@@ -1,19 +1,25 @@
 import React from 'react';
 import { Appointment, EXAM_LABELS } from '../types';
-import { Clock, Plus, CheckCircle2, FileEdit, XCircle, User, AlertCircle } from 'lucide-react';
+import { Clock, Plus, CheckCircle2, FileEdit, ChevronLeft, ChevronRight, Info, XCircle } from 'lucide-react';
 
 interface DayTimelineViewProps {
   selectedDate: string;
+  onChangeDate: (date: string) => void;
   appointments: Appointment[];
   onSelectSlot: (time: string) => void;
   onOpenReport: (appointment: Appointment) => void;
+  onOpenPreparation: (appointment: Appointment) => void;
+  onCancelAppointment: (appointment: Appointment) => void;
 }
 
 export const DayTimelineView: React.FC<DayTimelineViewProps> = ({
   selectedDate,
+  onChangeDate,
   appointments,
   onSelectSlot,
   onOpenReport,
+  onOpenPreparation,
+  onCancelAppointment,
 }) => {
   // Slots de 30m das 08:00 às 18:00
   const timeSlots = [
@@ -22,8 +28,52 @@ export const DayTimelineView: React.FC<DayTimelineViewProps> = ({
     '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
   ];
 
+  // Utilitários de data (YYYY-MM-DD)
+  const getFormattedDateString = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const todayStr = getFormattedDateString(new Date());
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrowStr = getFormattedDateString(tomorrowDate);
+
+  const activeDateStr = selectedDate || tomorrowStr;
+
+  const shiftDate = (days: number) => {
+    const [y, m, d] = activeDateStr.split('-').map(Number);
+    const current = new Date(y, m - 1, d);
+    current.setDate(current.getDate() + days);
+    onChangeDate(getFormattedDateString(current));
+  };
+
+  const formattedDisplayDate = (() => {
+    const [y, m, d] = activeDateStr.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    return dateObj.toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  })();
+
   const appointmentsByTime = appointments.reduce((acc, appt) => {
     const d = new Date(appt.dateTime);
+    const apptDateStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+
+    if (selectedDate && apptDateStr !== selectedDate) {
+      return acc;
+    }
+
     const timeStr = d.toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
@@ -37,25 +87,63 @@ export const DayTimelineView: React.FC<DayTimelineViewProps> = ({
 
   return (
     <div className="bg-white rounded-lg border border-slate-200/90 shadow-2xs overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
+      <div className="px-4 py-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50/60">
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-            Linha do Tempo da Sala Única
+            Linha do Tempo da Sala Única • <span className="text-blue-700 capitalize">{formattedDisplayDate}</span>
           </h3>
           <p className="text-[11px] text-slate-500">
             Horários ocupados em vermelho • Horários livres em verde
           </p>
         </div>
-        <div className="flex items-center gap-3 text-[11px]">
-          <span className="flex items-center gap-1.5 text-slate-700 font-medium">
-            <span className="w-2.5 h-2.5 rounded bg-emerald-500" /> Disponível
-          </span>
-          <span className="flex items-center gap-1.5 text-slate-700 font-medium">
-            <span className="w-2.5 h-2.5 rounded bg-rose-500" /> Ocupado
-          </span>
-          <span className="flex items-center gap-1.5 text-slate-400">
-            <span className="w-2.5 h-2.5 rounded bg-slate-300" /> Cancelado
-          </span>
+
+        {/* Navegação rápida de dias */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center bg-white border border-slate-200 rounded overflow-hidden text-[11px]">
+            <button
+              type="button"
+              onClick={() => shiftDate(-1)}
+              className="px-2 py-1 hover:bg-slate-50 text-slate-600 border-r border-slate-200 flex items-center"
+              title="Dia anterior"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangeDate(todayStr)}
+              className={`px-2.5 py-1 font-medium border-r border-slate-200 transition ${
+                activeDateStr === todayStr ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
+              }`}
+            >
+              Hoje
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangeDate(tomorrowStr)}
+              className={`px-2.5 py-1 font-medium border-r border-slate-200 transition ${
+                activeDateStr === tomorrowStr ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
+              }`}
+            >
+              Amanhã
+            </button>
+            <button
+              type="button"
+              onClick={() => shiftDate(1)}
+              className="px-2 py-1 hover:bg-slate-50 text-slate-600 flex items-center"
+              title="Próximo dia"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="hidden md:flex items-center gap-2.5 text-[11px] pl-1">
+            <span className="flex items-center gap-1 text-slate-700 font-medium">
+              <span className="w-2.5 h-2.5 rounded bg-emerald-500" /> Livre
+            </span>
+            <span className="flex items-center gap-1 text-slate-700 font-medium">
+              <span className="w-2.5 h-2.5 rounded bg-rose-500" /> Ocupado
+            </span>
+          </div>
         </div>
       </div>
 
@@ -73,7 +161,7 @@ export const DayTimelineView: React.FC<DayTimelineViewProps> = ({
             return (
               <div
                 key={slot}
-                className="p-2.5 rounded border border-rose-300 bg-rose-50/60 flex flex-col justify-between transition hover:border-rose-400 hover:shadow-2xs min-h-[96px]"
+                className="p-2.5 rounded border border-rose-300 bg-rose-50/60 flex flex-col justify-between transition hover:border-rose-400 hover:shadow-2xs min-h-[104px]"
               >
                 <div>
                   <div className="flex items-center justify-between mb-1">
@@ -93,7 +181,7 @@ export const DayTimelineView: React.FC<DayTimelineViewProps> = ({
                   </p>
                 </div>
 
-                <div className="pt-2 border-t border-rose-200/80 mt-1 flex items-center justify-between">
+                <div className="pt-2 border-t border-rose-200/80 mt-1.5 flex items-center justify-between gap-1">
                   <div className="text-[9px] font-medium">
                     {hasPublished && (
                       <span className="text-emerald-700 font-semibold flex items-center gap-0.5">
@@ -108,12 +196,33 @@ export const DayTimelineView: React.FC<DayTimelineViewProps> = ({
                     {!appt.report && <span className="text-rose-700 font-medium">Pendente</span>}
                   </div>
 
-                  <button
-                    onClick={() => onOpenReport(appt)}
-                    className="text-[10px] font-bold text-rose-800 hover:text-rose-950 underline"
-                  >
-                    Laudo
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => onOpenPreparation(appt)}
+                      title="Ver/Editar Preparo"
+                      className="text-slate-600 hover:text-blue-700 p-0.5 rounded transition"
+                    >
+                      <Info className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpenReport(appt)}
+                      className="text-[10px] font-bold text-rose-800 hover:text-rose-950 underline"
+                    >
+                      Laudo
+                    </button>
+                    {!hasPublished && (
+                      <button
+                        type="button"
+                        onClick={() => onCancelAppointment(appt)}
+                        title="Cancelar Agendamento"
+                        className="text-rose-600 hover:text-rose-900 p-0.5 rounded transition"
+                      >
+                        <XCircle className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -124,7 +233,7 @@ export const DayTimelineView: React.FC<DayTimelineViewProps> = ({
               <div
                 key={slot}
                 onClick={() => onSelectSlot(slot)}
-                className="p-2.5 rounded border border-slate-200 bg-slate-50/80 hover:bg-emerald-50/40 hover:border-emerald-300 flex flex-col justify-between cursor-pointer transition min-h-[96px] group"
+                className="p-2.5 rounded border border-slate-200 bg-slate-50/80 hover:bg-emerald-50/40 hover:border-emerald-300 flex flex-col justify-between cursor-pointer transition min-h-[104px] group"
               >
                 <div>
                   <div className="flex items-center justify-between mb-1">
@@ -149,7 +258,7 @@ export const DayTimelineView: React.FC<DayTimelineViewProps> = ({
             <div
               key={slot}
               onClick={() => onSelectSlot(slot)}
-              className="p-2.5 rounded border border-dashed border-emerald-300 bg-emerald-50/20 hover:bg-emerald-50/60 hover:border-emerald-400 flex flex-col justify-between cursor-pointer transition min-h-[96px] group"
+              className="p-2.5 rounded border border-dashed border-emerald-300 bg-emerald-50/20 hover:bg-emerald-50/60 hover:border-emerald-400 flex flex-col justify-between cursor-pointer transition min-h-[104px] group"
             >
               <div>
                 <div className="flex items-center justify-between mb-1">

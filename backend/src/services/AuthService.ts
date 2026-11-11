@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { UserRepository } from '../repositories/index.js';
-import { UnauthorizedError, NotFoundError } from '../errors/AppError.js';
+import { UnauthorizedError, NotFoundError, ConflictError } from '../errors/AppError.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret';
 
@@ -57,5 +57,19 @@ export class AuthService {
 
   async getPatients() {
     return this.userRepo.listPatients();
+  }
+
+  async registerPatient(name: string, email: string, password = '123456') {
+    const existing = await this.userRepo.findByEmail(email);
+    if (existing) {
+      throw new ConflictError('Já existe um usuário cadastrado com este e-mail');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    return this.userRepo.createPatient({
+      name,
+      email,
+      password: hashedPassword,
+    });
   }
 }

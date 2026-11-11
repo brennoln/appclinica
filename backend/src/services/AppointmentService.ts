@@ -121,4 +121,18 @@ export class AppointmentService {
 
     return this.appointmentRepo.updateStatus(appointmentId, 'CANCELLED');
   }
+
+  async updatePreparationNotes(appointmentId: string, preparationNotes: string | null) {
+    const appointment = await this.appointmentRepo.findById(appointmentId);
+
+    if (!appointment) {
+      throw new NotFoundError('Agendamento não encontrado');
+    }
+
+    if (appointment.status === 'CANCELLED') {
+      throw new BadRequestError('Não é possível editar orientações de preparo de um agendamento cancelado');
+    }
+
+    return this.appointmentRepo.updatePreparationNotes(appointmentId, preparationNotes);
+  }
 }

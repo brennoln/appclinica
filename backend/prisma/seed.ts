@@ -63,6 +63,8 @@ async function main() {
       examType: 'RAIO_X',
       dateTime: slot1,
       status: 'SCHEDULED',
+      preparationNotes:
+        'Não é necessário jejum. Utilizar roupas leves sem botões, zíperes ou peças metálicas na região do tórax. Retirar colares, correntes e piercings antes de entrar na sala de exame.',
     },
   });
 
@@ -84,6 +86,8 @@ async function main() {
       examType: 'ULTRASSOM',
       dateTime: slot2,
       status: 'SCHEDULED',
+      preparationNotes:
+        'Jejum absoluto de 8 horas antes do exame (permitido apenas água em pequena quantidade para medicação contínua). Ingerir 4 copos de água 1 hora antes do horário agendado e reter a urina (bexiga cheia).',
     },
   });
 
@@ -104,6 +108,8 @@ async function main() {
       examType: 'RESSONANCIA_MAGNETICA',
       dateTime: slot3,
       status: 'SCHEDULED',
+      preparationNotes:
+        'Jejum de 4 horas. Proibido entrar na sala com objetos metálicos, relógios, cartões magnéticos ou aparelhos eletrônicos. Comparecer com 30 minutos de antecedência para preenchimento do questionário de segurança de campo magnético. Informar uso de marca-passo ou próteses metálicas.',
     },
   });
 

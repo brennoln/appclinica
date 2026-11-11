@@ -23,6 +23,16 @@ export class UserRepository {
       orderBy: { name: 'asc' },
     });
   }
+
+  async createPatient(data: { name: string; email: string; password: string }): Promise<Pick<User, 'id' | 'name' | 'email' | 'role'>> {
+    return this.db.user.create({
+      data: {
+        ...data,
+        role: 'PATIENT',
+      },
+      select: { id: true, name: true, email: true, role: true },
+    });
+  }
 }
 
 export class AppointmentRepository {
@@ -102,6 +112,16 @@ export class AppointmentRepository {
     return this.db.appointment.update({
       where: { id },
       data: { status },
+      include: {
+        patient: { select: { id: true, name: true, email: true } },
+      },
+    });
+  }
+
+  async updatePreparationNotes(id: string, preparationNotes: string | null) {
+    return this.db.appointment.update({
+      where: { id },
+      data: { preparationNotes },
       include: {
         patient: { select: { id: true, name: true, email: true } },
       },

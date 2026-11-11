@@ -1,24 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ExamType, EXAM_LABELS, User } from '../types';
+import { Appointment, ExamType, EXAM_LABELS, User } from '../types';
 import { PREPARATION_TEMPLATES } from '../data/examInstructions';
 import { api } from '../services/api';
-import { Calendar, Clock, User as UserIcon, Activity, Plus, X, FileText, Sparkles } from 'lucide-react';
+import { Plus, X, FileText, UserPlus, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CreateAppointmentModalProps {
   patients: User[];
+  appointments?: Appointment[];
   initialTime?: string;
   initialDate?: string;
   onClose: () => void;
   onCreated: () => void;
+  onPatientCreated?: () => void;
 }
 
 export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
   patients,
+  appointments = [],
   initialTime = '09:00',
   initialDate,
   onClose,
   onCreated,
+  onPatientCreated,
 }) => {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -33,7 +37,20 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
   const [time, setTime] = useState(initialTime);
   const [preparationNotes, setPreparationNotes] = useState<string>('');
   const [loading, setLoading] = useState(false);
+
+  // Cadastro rápido de paciente inline
+  const [showNewPatientForm, setShowNewPatientForm] = useState(false);
+  const [newPatientName, setNewPatientName] = useState('');
+  const [newPatientEmail, setNewPatientEmail] = useState('');
+  const [creatingPatient, setCreatingPatient] = useState(false);
+
   const selectPatientRef = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => {
+    if (!patientId && patients.length > 0) {
+      setPatientId(patients[0].id);
+    }
+  }, [patients, patientId]);
 
   // Carrega o primeiro template padrão quando o tipo de exame muda
   useEffect(() => {
@@ -61,8 +78,53 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
   ];
 
+  // Identifica os horários já ocupados na data selecionada (America/Sao_Paulo)
+  const occupiedSlotsForSelectedDate = new Set<string>();
+  appointments.forEach((appt) => {
+    if (appt.status !== 'SCHEDULED') return;
+    const d = new Date(appt.dateTime);
+    const apptDateParts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+    if (apptDateParts === date) {
+      const slotStr = d.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Sao_Paulo',
+      });
+      occupiedSlotsForSelectedDate.add(slotStr);
+    }
+  });
+
   const handleApplyTemplate = (text: string) => {
     setPreparationNotes(text);
+  };
+
+  const handleCreateQuickPatient = async () => {
+    if (!newPatientName.trim() || !newPatientEmail.trim()) {
+      toast.warning('Informe o nome e o e-mail do novo paciente.');
+      return;
+    }
+    setCreatingPatient(true);
+    try {
+      const res = await api.post<User>('/patients', {
+        name: newPatientName.trim(),
+        email: newPatientEmail.trim(),
+      });
+      toast.success(`Paciente ${res.data.name} cadastrado! (Senha padrão: 123456)`);
+      onPatientCreated?.();
+      setPatientId(res.data.id);
+      setShowNewPatientForm(false);
+      setNewPatientName('');
+      setNewPatientEmail('');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Erro ao cadastrar paciente.');
+    } finally {
+      setCreatingPatient(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -129,53 +191,98 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-3.5 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-5 space-y-3.5 max-h-[82vh] overflow-y-auto">
           <div>
-            <label htmlFor="select-patient" className="block text-[11px] font-semibold text-slate-700 mb-1">
-              Paciente <span className="text-rose-500">*</span>
-            </label>
-            <select
-              id="select-patient"
-              ref={selectPatientRef}
-              value={patientId}
-              onChange={(e) => setPatientId(e.target.value)}
-              className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
-            >
-              {patients.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.email})
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="select-patient" className="block text-[11px] font-semibold text-slate-700">
+                Paciente <span className="text-rose-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowNewPatientForm(!showNewPatientForm)}
+                className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 hover:text-blue-800"
+              >
+                <UserPlus className="w-3 h-3" />
+                <span>{showNewPatientForm ? 'Cancelar novo cadastro' : '+ Cadastrar novo paciente'}</span>
+              </button>
+            </div>
+
+            {showNewPatientForm ? (
+              <div className="p-3 bg-blue-50/50 border border-blue-200 rounded space-y-2 mb-2">
+                <p className="text-[10px] font-bold uppercase text-blue-900">Cadastro Rápido de Paciente</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Nome completo"
+                    value={newPatientName}
+                    onChange={(e) => setNewPatientName(e.target.value)}
+                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs text-slate-900 outline-none focus:border-blue-600"
+                  />
+                  <input
+                    type="email"
+                    placeholder="E-mail (ex: paciente@demo.com)"
+                    value={newPatientEmail}
+                    onChange={(e) => setNewPatientEmail(e.target.value)}
+                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs text-slate-900 outline-none focus:border-blue-600"
+                  />
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[10px] text-slate-500">Senha inicial de acesso: <strong>123456</strong></span>
+                  <button
+                    type="button"
+                    disabled={creatingPatient}
+                    onClick={handleCreateQuickPatient}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-semibold transition"
+                  >
+                    <Check className="w-3 h-3" />
+                    <span>{creatingPatient ? 'Salvando...' : 'Salvar Paciente'}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <select
+                id="select-patient"
+                ref={selectPatientRef}
+                value={patientId}
+                onChange={(e) => setPatientId(e.target.value)}
+                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+              >
+                {patients.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.email})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
-          <div>
-            <label htmlFor="select-exam" className="block text-[11px] font-semibold text-slate-700 mb-1">
-              Tipo de Exame <span className="text-rose-500">*</span>
-            </label>
-            <select
-              id="select-exam"
-              value={examType}
-              onChange={(e) => {
-                const newType = e.target.value as ExamType;
-                setExamType(newType);
-                const firstTemplate = PREPARATION_TEMPLATES[newType]?.[0];
-                if (firstTemplate) setPreparationNotes(firstTemplate.text);
-              }}
-              className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
-            >
-              {Object.entries(EXAM_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="select-exam" className="block text-[11px] font-semibold text-slate-700 mb-1">
+                Tipo de Exame <span className="text-rose-500">*</span>
+              </label>
+              <select
+                id="select-exam"
+                value={examType}
+                onChange={(e) => {
+                  const newType = e.target.value as ExamType;
+                  setExamType(newType);
+                  const firstTemplate = PREPARATION_TEMPLATES[newType]?.[0];
+                  if (firstTemplate) setPreparationNotes(firstTemplate.text);
+                }}
+                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+              >
+                {Object.entries(EXAM_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="input-date" className="block text-[11px] font-semibold text-slate-700 mb-1">
-                Data <span className="text-rose-500">*</span>
+                Data do Exame <span className="text-rose-500">*</span>
               </label>
               <input
                 id="input-date"
@@ -186,23 +293,58 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                 className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
               />
             </div>
+          </div>
 
-            <div>
-              <label htmlFor="select-slot" className="block text-[11px] font-semibold text-slate-700 mb-1">
-                Horário (Fixo 30m) <span className="text-rose-500">*</span>
+          {/* Seletor visual de horários de 30m com indicação em vermelho dos ocupados */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] font-semibold text-slate-700">
+                Horário da Sala (Intervalos de 30m) <span className="text-rose-500">*</span>
               </label>
-              <select
-                id="select-slot"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium text-slate-900 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
-              >
-                {timeSlots.map((slot) => (
-                  <option key={slot} value={slot}>
+              <div className="flex items-center gap-2 text-[10px]">
+                <span className="flex items-center gap-1 text-emerald-700 font-medium">
+                  <span className="w-2 h-2 rounded-xs bg-emerald-500" /> Livre
+                </span>
+                <span className="flex items-center gap-1 text-rose-700 font-medium">
+                  <span className="w-2 h-2 rounded-xs bg-rose-500" /> Ocupado
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-6 gap-1.5">
+              {timeSlots.map((slot) => {
+                const isOccupied = occupiedSlotsForSelectedDate.has(slot);
+                const isSelected = time === slot;
+
+                if (isOccupied) {
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      disabled
+                      title="Horário já ocupado nesta data"
+                      className="py-1.5 px-1 rounded text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-300 cursor-not-allowed opacity-85 line-through"
+                    >
+                      {slot}
+                    </button>
+                  );
+                }
+
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => setTime(slot)}
+                    className={`py-1.5 px-1 rounded text-[11px] font-semibold border transition ${
+                      isSelected
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                        : 'bg-emerald-50/40 text-emerald-900 border-emerald-200 hover:bg-emerald-100/60'
+                    }`}
+                  >
                     {slot}
-                  </option>
-                ))}
-              </select>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -254,7 +396,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || occupiedSlotsForSelectedDate.has(time)}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium rounded transition"
             >
               {loading ? 'Confirmando...' : 'Confirmar Agendamento'}

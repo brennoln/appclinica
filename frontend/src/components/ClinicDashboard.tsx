@@ -4,11 +4,11 @@ import { useAppointments } from '../hooks/useAppointments';
 import { usePatients } from '../hooks/usePatients';
 import { ReportModal } from './ReportModal';
 import { CreateAppointmentModal } from './CreateAppointmentModal';
+import { ExamPreparationModal } from './ExamPreparationModal';
 import { DayTimelineView } from './DayTimelineView';
 import { ConfirmDialog } from './ConfirmDialog';
 import {
   Calendar,
-  Filter,
   Plus,
   FileEdit,
   CheckCircle2,
@@ -19,6 +19,7 @@ import {
   List,
   Download,
   Search,
+  Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,7 +32,7 @@ export const ClinicDashboard: React.FC = () => {
   // Slot selecionado para agendamento rápido
   const [slotToBook, setSlotToBook] = useState<string | null>(null);
 
-  const { patients } = usePatients();
+  const { patients, refetchPatients } = usePatients();
   const { appointments, loading, refetch, cancelAppointment } = useAppointments({
     date: selectedDate,
     patientId: selectedPatientId,
@@ -39,7 +40,24 @@ export const ClinicDashboard: React.FC = () => {
 
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
   const [selectedAppointmentForReport, setSelectedAppointmentForReport] = useState<Appointment | null>(null);
+  const [selectedAppointmentForPreparation, setSelectedAppointmentForPreparation] = useState<Appointment | null>(null);
   const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
+
+  const getTomorrowDateStr = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const y = tomorrow.getFullYear();
+    const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const d = String(tomorrow.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const handleSwitchToTimeline = () => {
+    if (!selectedDate) {
+      setSelectedDate(getTomorrowDateStr());
+    }
+    setViewMode('timeline');
+  };
 
   // Filtragem local por texto (busca instantânea por nome ou exame)
   const filteredAppointments = appointments.filter((appt) => {
@@ -147,7 +165,7 @@ export const ClinicDashboard: React.FC = () => {
               <span>Lista</span>
             </button>
             <button
-              onClick={() => setViewMode('timeline')}
+              onClick={handleSwitchToTimeline}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded transition ${
                 viewMode === 'timeline'
                   ? 'bg-white text-blue-700 shadow-2xs'
@@ -251,9 +269,12 @@ export const ClinicDashboard: React.FC = () => {
       {viewMode === 'timeline' ? (
         <DayTimelineView
           selectedDate={selectedDate}
+          onChangeDate={setSelectedDate}
           appointments={filteredAppointments}
           onSelectSlot={handleQuickBookSlot}
           onOpenReport={(appt) => setSelectedAppointmentForReport(appt)}
+          onOpenPreparation={(appt) => setSelectedAppointmentForPreparation(appt)}
+          onCancelAppointment={(appt) => setAppointmentToCancel(appt)}
         />
       ) : (
         <section className="bg-white rounded-lg border border-slate-200/90 shadow-2xs overflow-hidden">
@@ -370,6 +391,17 @@ export const ClinicDashboard: React.FC = () => {
                         <td className="px-4 py-3 whitespace-nowrap text-right space-x-1.5">
                           {!isCancelled && (
                             <button
+                              onClick={() => setSelectedAppointmentForPreparation(appt)}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition"
+                              title="Ver ou editar recomendações de preparo do paciente"
+                            >
+                              <Info className="w-3 h-3 text-blue-600" aria-hidden="true" />
+                              <span className="hidden lg:inline">Preparo</span>
+                            </button>
+                          )}
+
+                          {!isCancelled && (
+                            <button
                               onClick={() => setSelectedAppointmentForReport(appt)}
                               className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 transition"
                             >
@@ -402,6 +434,7 @@ export const ClinicDashboard: React.FC = () => {
       {isCreateOpen && (
         <CreateAppointmentModal
           patients={patients}
+          appointments={appointments}
           initialTime={slotToBook || '09:00'}
           initialDate={selectedDate || undefined}
           onClose={() => {
@@ -409,6 +442,7 @@ export const ClinicDashboard: React.FC = () => {
             setSlotToBook(null);
           }}
           onCreated={refetch}
+          onPatientCreated={refetchPatients}
         />
       )}
 
@@ -417,6 +451,15 @@ export const ClinicDashboard: React.FC = () => {
           appointment={selectedAppointmentForReport}
           isClinic={true}
           onClose={() => setSelectedAppointmentForReport(null)}
+          onSaved={refetch}
+        />
+      )}
+
+      {selectedAppointmentForPreparation && (
+        <ExamPreparationModal
+          appointment={selectedAppointmentForPreparation}
+          isClinic={true}
+          onClose={() => setSelectedAppointmentForPreparation(null)}
           onSaved={refetch}
         />
       )}
