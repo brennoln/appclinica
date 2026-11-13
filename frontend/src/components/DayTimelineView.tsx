@@ -28,32 +28,30 @@ export const DayTimelineView: React.FC<DayTimelineViewProps> = ({
     '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
   ];
 
-  // Utilitários de data (YYYY-MM-DD)
-  const getFormattedDateString = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
+  // Utilitários de data (YYYY-MM-DD) sempre baseados no fuso America/Sao_Paulo
+  const getFormattedDateString = (d: Date) =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
 
   const todayStr = getFormattedDateString(new Date());
-  const tomorrowDate = new Date();
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrowStr = getFormattedDateString(tomorrowDate);
+  const tomorrowStr = getFormattedDateString(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
   const activeDateStr = selectedDate || tomorrowStr;
 
   const shiftDate = (days: number) => {
-    const [y, m, d] = activeDateStr.split('-').map(Number);
-    const current = new Date(y, m - 1, d);
-    current.setDate(current.getDate() + days);
-    onChangeDate(getFormattedDateString(current));
+    const baseDate = new Date(`${activeDateStr}T12:00:00.000-03:00`);
+    const shifted = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
+    onChangeDate(getFormattedDateString(shifted));
   };
 
   const formattedDisplayDate = (() => {
-    const [y, m, d] = activeDateStr.split('-').map(Number);
-    const dateObj = new Date(y, m - 1, d);
+    const dateObj = new Date(`${activeDateStr}T12:00:00.000-03:00`);
     return dateObj.toLocaleDateString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
       weekday: 'short',
       day: '2-digit',
       month: '2-digit',

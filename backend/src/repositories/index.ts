@@ -1,5 +1,5 @@
 import { PrismaClient, User, Appointment, Report, Prisma } from '@prisma/client';
-import { prisma } from '../config/database.js';
+import { prisma, withWriteLock } from '../config/database.js';
 
 export class UserRepository {
   constructor(private readonly db: PrismaClient = prisma) {}
@@ -38,8 +38,9 @@ export class UserRepository {
 export class AppointmentRepository {
   constructor(private readonly db: PrismaClient = prisma) {}
 
-  async findById(id: string) {
-    return this.db.appointment.findUnique({
+  async findById(id: string, tx?: Prisma.TransactionClient) {
+    const client = tx || this.db;
+    return client.appointment.findUnique({
       where: { id },
       include: {
         patient: { select: { id: true, name: true, email: true } },
@@ -108,8 +109,9 @@ export class AppointmentRepository {
     });
   }
 
-  async updateStatus(id: string, status: 'SCHEDULED' | 'CANCELLED') {
-    return this.db.appointment.update({
+  async updateStatus(id: string, status: 'SCHEDULED' | 'CANCELLED', tx?: Prisma.TransactionClient) {
+    const client = tx || this.db;
+    return client.appointment.update({
       where: { id },
       data: { status },
       include: {
@@ -118,8 +120,9 @@ export class AppointmentRepository {
     });
   }
 
-  async updatePreparationNotes(id: string, preparationNotes: string | null) {
-    return this.db.appointment.update({
+  async updatePreparationNotes(id: string, preparationNotes: string | null, tx?: Prisma.TransactionClient) {
+    const client = tx || this.db;
+    return client.appointment.update({
       where: { id },
       data: { preparationNotes },
       include: {
@@ -128,8 +131,9 @@ export class AppointmentRepository {
     });
   }
 
-  async confirmAttendance(id: string, confirmedAt: Date) {
-    return this.db.appointment.update({
+  async confirmAttendance(id: string, confirmedAt: Date, tx?: Prisma.TransactionClient) {
+    const client = tx || this.db;
+    return client.appointment.update({
       where: { id },
       data: { confirmedAt },
       include: {
@@ -139,15 +143,16 @@ export class AppointmentRepository {
   }
 
   async transaction<T>(callback: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-    return this.db.$transaction(callback);
+    return withWriteLock(() => this.db.$transaction(callback));
   }
 }
 
 export class ReportRepository {
   constructor(private readonly db: PrismaClient = prisma) {}
 
-  async findById(id: string) {
-    return this.db.report.findUnique({
+  async findById(id: string, tx?: Prisma.TransactionClient) {
+    const client = tx || this.db;
+    return client.report.findUnique({
       where: { id },
       include: {
         appointment: {
@@ -164,33 +169,43 @@ export class ReportRepository {
     });
   }
 
-  async findByAppointmentId(appointmentId: string) {
-    return this.db.report.findUnique({
+  async findByAppointmentId(appointmentId: string, tx?: Prisma.TransactionClient) {
+    const client = tx || this.db;
+    return client.report.findUnique({
       where: { appointmentId },
     });
   }
 
-  async create(data: {
-    appointmentId: string;
-    title: string;
-    content: string;
-    doctorName: string;
-    status: 'DRAFT' | 'PUBLISHED';
-    publishedAt?: Date | null;
-  }) {
-    return this.db.report.create({
+  async create(
+    data: {
+      appointmentId: string;
+      title: string;
+      content: string;
+      doctorName: string;
+      status: 'DRAFT' | 'PUBLISHED';
+      publishedAt?: Date | null;
+    },
+    tx?: Prisma.TransactionClient
+  ) {
+    const client = tx || this.db;
+    return client.report.create({
       data,
     });
   }
 
-  async update(id: string, data: {
-    title: string;
-    content: string;
-    doctorName: string;
-    status: 'DRAFT' | 'PUBLISHED';
-    publishedAt?: Date | null;
-  }) {
-    return this.db.report.update({
+  async update(
+    id: string,
+    data: {
+      title: string;
+      content: string;
+      doctorName: string;
+      status: 'DRAFT' | 'PUBLISHED';
+      publishedAt?: Date | null;
+    },
+    tx?: Prisma.TransactionClient
+  ) {
+    const client = tx || this.db;
+    return client.report.update({
       where: { id },
       data,
     });

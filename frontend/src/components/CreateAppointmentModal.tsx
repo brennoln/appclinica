@@ -24,12 +24,13 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
   onCreated,
   onPatientCreated,
 }) => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const year = tomorrow.getFullYear();
-  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-  const day = String(tomorrow.getDate()).padStart(2, '0');
-  const defaultDate = `${year}-${month}-${day}`;
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const defaultDate = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(tomorrow);
 
   const [patientId, setPatientId] = useState(patients[0]?.id || '');
   const [examType, setExamType] = useState<ExamType>('RAIO_X');
@@ -135,17 +136,17 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
       return;
     }
 
-    const [hours, minutes] = time.split(':').map(Number);
-    const [yearVal, monthVal, dayVal] = date.split('-').map(Number);
-    const localDateTime = new Date(yearVal, monthVal - 1, dayVal, hours, minutes, 0, 0);
+    // Constrói o instante exato no fuso oficial da clínica (America/Sao_Paulo, UTC-3),
+    // independentemente do fuso horário configurado no navegador do usuário.
+    const clinicDateTime = new Date(`${date}T${time}:00.000-03:00`);
 
     const now = new Date();
-    if (localDateTime.getTime() <= now.getTime()) {
+    if (clinicDateTime.getTime() <= now.getTime()) {
       toast.error('Não é permitido agendar em datas ou horários passados.');
       return;
     }
 
-    const isoString = localDateTime.toISOString();
+    const isoString = clinicDateTime.toISOString();
 
     setLoading(true);
     try {

@@ -18,7 +18,10 @@ export class AppointmentService {
   ) {}
 
   async createAppointment(dto: CreateAppointmentDTO) {
-    const targetDate = new Date(dto.dateTime);
+    const rawDateTime = dto.dateTime.trim();
+    const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(rawDateTime);
+    const normalizedDateTime = hasTimezone ? rawDateTime : `${rawDateTime}-03:00`;
+    const targetDate = new Date(normalizedDateTime);
 
     if (isNaN(targetDate.getTime())) {
       throw new BadRequestError('Data e horário informados são inválidos');
@@ -30,10 +33,10 @@ export class AppointmentService {
       throw new BadRequestError('Não é permitido criar agendamentos em datas passadas');
     }
 
-    // Regra 2: Intervalos fixos de 30 minutos em sala única
-    const minutes = targetDate.getMinutes();
-    const seconds = targetDate.getSeconds();
-    const ms = targetDate.getMilliseconds();
+    // Regra 2: Intervalos fixos de 30 minutos em sala única (avaliado em UTC/America_Sao_Paulo)
+    const minutes = targetDate.getUTCMinutes();
+    const seconds = targetDate.getUTCSeconds();
+    const ms = targetDate.getUTCMilliseconds();
     if ((minutes !== 0 && minutes !== 30) || seconds !== 0 || ms !== 0) {
       throw new BadRequestError(
         'Os agendamentos devem ser em horários fixos com intervalos de 30 minutos (ex: 09:00, 09:30).'
@@ -46,7 +49,7 @@ export class AppointmentService {
       throw new NotFoundError('Paciente não encontrado');
     }
 
-    // Regra 4: Concorrência e Sala Única
+    // Regra 4: Concorrência e Sala Única (serializada via transação com lock de escrita)
     return this.appointmentRepo.transaction(async (tx) => {
       const activeSlot = await this.appointmentRepo.findActiveByDateTime(targetDate, tx);
       if (activeSlot) {
@@ -93,7 +96,7 @@ export class AppointmentService {
 
     return appointments.map((appt) => {
       if (userRole === 'PATIENT') {
-        if (!appt.report || appt.report.status !== 'PUBLISHED') {
+        if (appt.status === 'CANCELLED' || !appt.report || appt.report.status !== 'PUBLISHED') {
           return {
             ...appt,
             report: null,
@@ -105,21 +108,29 @@ export class AppointmentService {
   }
 
   async cancelAppointment(appointmentId: string) {
-    const appointment = await this.appointmentRepo.findById(appointmentId);
+    const runTx = this.appointmentRepo.transaction
+      ? this.appointmentRepo.transaction.bind(this.appointmentRepo)
+      : async <T>(cb: (tx?: any) => Promise<T>) => cb(undefined);
 
-    if (!appointment) {
-      throw new NotFoundError('Agendamento não encontrado');
-    }
+    return runTx(async (tx) => {
+      const appointment = await this.appointmentRepo.findById(appointmentId, tx);
 
-    if (appointment.report && appointment.report.status === 'PUBLISHED') {
-      throw new BadRequestError('Não é possível cancelar um agendamento cujo laudo já foi publicado');
-    }
+      if (!appointment) {
+        throw new NotFoundError('Agendamento não encontrado');
+      }
 
-    if (appointment.status === 'CANCELLED') {
-      throw new BadRequestError('Agendamento já está cancelado');
-    }
+      if (appointment.report && appointment.report.status === 'PUBLISHED') {
+        throw new BadRequestError('Não é possível cancelar um agendamento cujo laudo já foi publicado');
+      }
 
-    return this.appointmentRepo.updateStatus(appointmentId, 'CANCELLED');
+      if (appointment.status === 'CANCELLED') {
+        throw new BadRequestError('Agendamento já está cancelado');
+      }
+
+      return tx && tx !== this.appointmentRepo
+        ? this.appointmentRepo.updateStatus(appointmentId, 'CANCELLED', tx)
+        : this.appointmentRepo.updateStatus(appointmentId, 'CANCELLED');
+    });
   }
 
   async updatePreparationNotes(appointmentId: string, preparationNotes: string | null) {

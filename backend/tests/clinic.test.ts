@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { execSync } from 'child_process';
 import request from 'supertest';
 import { app } from '../src/server.js';
 import { prisma } from '../src/config/database.js';
@@ -11,7 +12,16 @@ let patient1Id: string;
 let patient2Id: string;
 
 beforeAll(async () => {
-  // Limpar dados e recriar usuários base para os testes
+  // Garante que o esquema do banco de testes isolado (test.db) esteja sincronizado sem afetar dev.db
+  execSync('npx prisma db push --skip-generate', {
+    env: {
+      ...process.env,
+      DATABASE_URL: process.env.TEST_DATABASE_URL || 'file:./test.db',
+    },
+    stdio: 'ignore',
+  });
+
+  // Limpar dados do banco de testes e recriar usuários base para os testes
   await prisma.report.deleteMany();
   await prisma.appointment.deleteMany();
   await prisma.user.deleteMany();
@@ -286,5 +296,173 @@ describe('Desafio Técnico - Testes de Integração E2E', () => {
       });
     expect(appt2.status).toBe(201);
     expect(appt2.body.id).not.toBe(appt1.body.id);
+  });
+
+  // Cenário Extra 1: Concorrência ampliada (10 requisições simultâneas em dois lotes sem erros 500)
+  it('Deve suportar 10 tentativas simultâneas de agendamento no mesmo horário sem erros 500 (1 criado, 9 conflitos 409)', async () => {
+    for (let batch = 1; batch <= 2; batch++) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + 15 + batch);
+      targetDate.setUTCHours(13, 0, 0, 0);
+
+      const requests = Array.from({ length: 10 }, (_, idx) =>
+        request(app)
+          .post('/api/appointments')
+          .set('Authorization', `Bearer ${clinicToken}`)
+          .send({
+            patientId: idx % 2 === 0 ? patient1Id : patient2Id,
+            examType: 'RAIO_X',
+            dateTime: targetDate.toISOString(),
+          })
+      );
+
+      const results = await Promise.all(requests);
+      const statuses = results.map((r) => r.status);
+
+      const createdCount = statuses.filter((s) => s === 201).length;
+      const conflictCount = statuses.filter((s) => s === 409).length;
+      const serverErrorCount = statuses.filter((s) => s >= 500).length;
+
+      expect(serverErrorCount).toBe(0);
+      expect(createdCount).toBe(1);
+      expect(conflictCount).toBe(9);
+    }
+  });
+
+  // Cenário Extra 2: Bloqueio de publicação de rascunho após cancelamento do agendamento
+  it('Deve impedir publicar um rascunho após o agendamento ter sido cancelado e negar acesso ao paciente', async () => {
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + 18);
+    targetDate.setUTCHours(14, 0, 0, 0);
+
+    // 1. Cria agendamento e rascunho de laudo
+    const apptRes = await request(app)
+      .post('/api/appointments')
+      .set('Authorization', `Bearer ${clinicToken}`)
+      .send({
+        patientId: patient1Id,
+        examType: 'RAIO_X',
+        dateTime: targetDate.toISOString(),
+      });
+    expect(apptRes.status).toBe(201);
+
+    const draftRes = await request(app)
+      .post(`/api/appointments/${apptRes.body.id}/report`)
+      .set('Authorization', `Bearer ${clinicToken}`)
+      .send({
+        title: 'Rascunho aberto antes do cancelamento',
+        content: 'Conteúdo preliminar',
+        doctorName: 'Dr. Teste',
+        status: 'DRAFT',
+      });
+    expect(draftRes.status).toBe(201);
+
+    // 2. Cancela o agendamento enquanto o rascunho estava criado
+    const cancelRes = await request(app)
+      .patch(`/api/appointments/${apptRes.body.id}/cancel`)
+      .set('Authorization', `Bearer ${clinicToken}`);
+    expect(cancelRes.status).toBe(200);
+
+    // 3. Tenta publicar o rascunho do exame já cancelado -> deve ser rejeitado (400)
+    const publishRes = await request(app)
+      .put(`/api/reports/${draftRes.body.id}`)
+      .set('Authorization', `Bearer ${clinicToken}`)
+      .send({
+        title: 'Tentativa de publicação após cancelamento',
+        content: 'Conteúdo final',
+        doctorName: 'Dr. Teste',
+        status: 'PUBLISHED',
+      });
+    expect(publishRes.status).toBe(400);
+
+    // 4. Paciente não deve conseguir consultar o laudo
+    const patientRes = await request(app)
+      .get(`/api/reports/${draftRes.body.id}`)
+      .set('Authorization', `Bearer ${patient1Token}`);
+    expect(patientRes.status).toBe(403);
+  });
+
+  // Cenário Extra 3: Cancelar e publicar simultaneamente nunca deve produzir estado inválido (CANCELLED + PUBLISHED)
+  it('Cancelar agendamento e publicar laudo simultaneamente nunca deve gerar estado inválido nas repetições', async () => {
+    for (let i = 0; i < 5; i++) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + 20 + i);
+      targetDate.setUTCHours(15, 0, 0, 0);
+
+      const apptRes = await request(app)
+        .post('/api/appointments')
+        .set('Authorization', `Bearer ${clinicToken}`)
+        .send({
+          patientId: patient1Id,
+          examType: 'ULTRASSOM',
+          dateTime: targetDate.toISOString(),
+        });
+
+      const draftRes = await request(app)
+        .post(`/api/appointments/${apptRes.body.id}/report`)
+        .set('Authorization', `Bearer ${clinicToken}`)
+        .send({
+          title: `Rascunho Concorrente ${i}`,
+          content: 'Conteúdo em revisão',
+          doctorName: 'Dr. Concorrência',
+          status: 'DRAFT',
+        });
+
+      const cancelReq = request(app)
+        .patch(`/api/appointments/${apptRes.body.id}/cancel`)
+        .set('Authorization', `Bearer ${clinicToken}`);
+
+      const publishReq = request(app)
+        .put(`/api/reports/${draftRes.body.id}`)
+        .set('Authorization', `Bearer ${clinicToken}`)
+        .send({
+          title: `Publicado Concorrente ${i}`,
+          content: 'Conteúdo publicado',
+          doctorName: 'Dr. Concorrência',
+          status: 'PUBLISHED',
+        });
+
+      const [cancelOut, publishOut] = await Promise.all([cancelReq, publishReq]);
+      const statuses = [cancelOut.status, publishOut.status];
+
+      // Uma operação deve ter sucesso (200) e a outra deve ser rejeitada por regra de negócio (400)
+      expect(statuses).toContain(200);
+      expect(statuses).toContain(400);
+
+      // Verifica no banco que jamais ocorre (status === CANCELLED && report.status === PUBLISHED)
+      const dbAppt = await prisma.appointment.findUnique({
+        where: { id: apptRes.body.id },
+        include: { report: true },
+      });
+      const isInvalidState =
+        dbAppt?.status === 'CANCELLED' && dbAppt?.report?.status === 'PUBLISHED';
+      expect(isInvalidState).toBe(false);
+    }
+  });
+
+  // Cenário Extra 4: Consistência de fuso horário America/Sao_Paulo independente do cliente
+  it('Deve registrar corretamente 30/11 às 09:00 no fuso America/Sao_Paulo (-03:00)', async () => {
+    const saoPauloDateTime = '2027-11-30T09:00:00.000-03:00';
+
+    const createRes = await request(app)
+      .post('/api/appointments')
+      .set('Authorization', `Bearer ${clinicToken}`)
+      .send({
+        patientId: patient1Id,
+        examType: 'RESSONANCIA_MAGNETICA',
+        dateTime: saoPauloDateTime,
+      });
+
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.dateTime).toBe('2027-11-30T12:00:00.000Z');
+
+    // Filtrando pelo dia 2027-11-30 deve retornar o exame às 09:00 de São Paulo
+    const listRes = await request(app)
+      .get('/api/appointments?date=2027-11-30')
+      .set('Authorization', `Bearer ${clinicToken}`);
+
+    expect(listRes.status).toBe(200);
+    expect(listRes.body).toHaveLength(1);
+    expect(listRes.body[0].id).toBe(createRes.body.id);
   });
 });

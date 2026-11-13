@@ -46,12 +46,13 @@ export const ClinicDashboard: React.FC = () => {
   const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
 
   const getTomorrowDateStr = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const y = tomorrow.getFullYear();
-    const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
-    const d = String(tomorrow.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(tomorrow);
   };
 
   const handleSwitchToTimeline = () => {
@@ -524,6 +525,9 @@ export const ClinicDashboard: React.FC = () => {
         isDestructive={true}
         onConfirm={() => {
           if (appointmentToCancel) {
+            if (selectedAppointmentForReport?.id === appointmentToCancel.id) {
+              setSelectedAppointmentForReport(null);
+            }
             cancelAppointment(appointmentToCancel.id);
           }
         }}

@@ -87,6 +87,7 @@ describe('ReportService (Testes Unitários)', () => {
       mockReportRepo.findById.mockResolvedValue({
         id: 'rep-1',
         status: 'PUBLISHED',
+        appointment: { status: 'SCHEDULED' },
       });
 
       await expect(
@@ -97,6 +98,23 @@ describe('ReportService (Testes Unitários)', () => {
           status: 'PUBLISHED',
         })
       ).rejects.toThrow('Laudos já publicados não podem ser alterados');
+    });
+
+    it('deve impedir publicação ou edição de rascunho se o agendamento foi cancelado', async () => {
+      mockReportRepo.findById.mockResolvedValue({
+        id: 'rep-draft',
+        status: 'DRAFT',
+        appointment: { status: 'CANCELLED' },
+      });
+
+      await expect(
+        reportService.updateReport('rep-draft', {
+          title: 'Tentativa após cancelamento',
+          content: 'Conteúdo',
+          doctorName: 'Dr.',
+          status: 'PUBLISHED',
+        })
+      ).rejects.toThrow('Agendamentos cancelados não podem receber ou publicar laudos');
     });
   });
 
