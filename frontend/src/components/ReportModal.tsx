@@ -85,6 +85,9 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       onClose();
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Erro ao salvar o laudo.');
+      if (err.response?.status === 400) {
+        onSaved();
+      }
     } finally {
       setLoading(false);
     }

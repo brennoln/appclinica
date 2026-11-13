@@ -440,6 +440,57 @@ describe('Desafio Técnico - Testes de Integração E2E', () => {
     }
   });
 
+  // Cenário Extra 3b: Cancelar e criar laudo publicado (POST) simultaneamente nunca deve produzir estado inválido
+  it('Cancelar agendamento e criar laudo publicado diretamente (POST) simultaneamente nunca deve gerar estado inválido', async () => {
+    for (let i = 0; i < 3; i++) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + 26 + i);
+      targetDate.setUTCHours(16, 0, 0, 0);
+
+      const apptRes = await request(app)
+        .post('/api/appointments')
+        .set('Authorization', `Bearer ${clinicToken}`)
+        .send({
+          patientId: patient1Id,
+          examType: 'RAIO_X',
+          dateTime: targetDate.toISOString(),
+        });
+
+      const cancelReq = request(app)
+        .patch(`/api/appointments/${apptRes.body.id}/cancel`)
+        .set('Authorization', `Bearer ${clinicToken}`);
+
+      const createPublishedReq = request(app)
+        .post(`/api/appointments/${apptRes.body.id}/report`)
+        .set('Authorization', `Bearer ${clinicToken}`)
+        .send({
+          title: `Laudo Direto Concorrente ${i}`,
+          content: 'Conteúdo publicado diretamente',
+          doctorName: 'Dr. Concorrência',
+          status: 'PUBLISHED',
+        });
+
+      const [cancelOut, createOut] = await Promise.all([cancelReq, createPublishedReq]);
+
+      // Se o cancelamento venceu (200), a criação do laudo deve falhar (400).
+      // Se a criação publicada venceu (201), o cancelamento deve falhar (400).
+      if (cancelOut.status === 200) {
+        expect(createOut.status).toBe(400);
+      } else {
+        expect(createOut.status).toBe(201);
+        expect(cancelOut.status).toBe(400);
+      }
+
+      const dbAppt = await prisma.appointment.findUnique({
+        where: { id: apptRes.body.id },
+        include: { report: true },
+      });
+      const isInvalidState =
+        dbAppt?.status === 'CANCELLED' && dbAppt?.report?.status === 'PUBLISHED';
+      expect(isInvalidState).toBe(false);
+    }
+  });
+
   // Cenário Extra 4: Consistência de fuso horário America/Sao_Paulo independente do cliente
   it('Deve registrar corretamente 30/11 às 09:00 no fuso America/Sao_Paulo (-03:00)', async () => {
     const saoPauloDateTime = '2027-11-30T09:00:00.000-03:00';
