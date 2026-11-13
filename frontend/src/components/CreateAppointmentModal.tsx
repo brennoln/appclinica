@@ -299,7 +299,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
           {/* Seletor visual de horários de 30m com indicação em vermelho dos ocupados */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] font-semibold text-slate-700">
+              <label htmlFor="select-slot" className="text-[11px] font-semibold text-slate-700">
                 Horário da Sala (Intervalos de 30m) <span className="text-rose-500">*</span>
               </label>
               <div className="flex items-center gap-2 text-[10px]">
@@ -312,6 +312,20 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
               </div>
             </div>
 
+            <select
+              id="select-slot"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="sr-only"
+              aria-label="Selecionar horário"
+            >
+              {timeSlots.map((slot) => (
+                <option key={slot} value={slot}>
+                  {slot}
+                </option>
+              ))}
+            </select>
+
             <div className="grid grid-cols-6 gap-1.5">
               {timeSlots.map((slot) => {
                 const isOccupied = occupiedSlotsForSelectedDate.has(slot);
@@ -322,9 +336,13 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                     <button
                       key={slot}
                       type="button"
-                      disabled
+                      onClick={() => setTime(slot)}
                       title="Horário já ocupado nesta data"
-                      className="py-1.5 px-1 rounded text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-300 cursor-not-allowed opacity-85 line-through"
+                      className={`py-1.5 px-1 rounded text-[11px] font-semibold border transition line-through ${
+                        isSelected
+                          ? 'bg-rose-600 text-white border-rose-700 shadow-2xs'
+                          : 'bg-rose-50 text-rose-700 border-rose-300 opacity-85 hover:bg-rose-100'
+                      }`}
                     >
                       {slot}
                     </button>
@@ -397,7 +415,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading || occupiedSlotsForSelectedDate.has(time)}
+              disabled={loading}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium rounded transition"
             >
               {loading ? 'Confirmando...' : 'Confirmar Agendamento'}

@@ -13,8 +13,6 @@ services:
       - DATABASE_URL=file:./dev.db
       - JWT_SECRET=super-secret-clinic-key-for-internship-eval
       - TIMEZONE=America/Sao_Paulo
-    volumes:
-      - ./backend/prisma/dev.db:/app/prisma/dev.db
     restart: unless-stopped
 
   frontend:

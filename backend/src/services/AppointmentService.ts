@@ -81,9 +81,12 @@ export class AppointmentService {
     let endDate: Date | undefined = undefined;
 
     if (filters.date) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(filters.date)) {
+        throw new BadRequestError('Formato de data inválido. Use AAAA-MM-DD');
+      }
       startDate = new Date(`${filters.date}T00:00:00.000-03:00`);
       endDate = new Date(`${filters.date}T23:59:59.999-03:00`);
-      if (isNaN(startDate.getTime())) {
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
         throw new BadRequestError('Formato de data inválido. Use AAAA-MM-DD');
       }
     }
@@ -134,50 +137,66 @@ export class AppointmentService {
   }
 
   async updatePreparationNotes(appointmentId: string, preparationNotes: string | null) {
-    const appointment = await this.appointmentRepo.findById(appointmentId);
+    const runTx = this.appointmentRepo.transaction
+      ? this.appointmentRepo.transaction.bind(this.appointmentRepo)
+      : async <T>(cb: (tx?: any) => Promise<T>) => cb(undefined);
 
-    if (!appointment) {
-      throw new NotFoundError('Agendamento não encontrado');
-    }
+    return runTx(async (tx) => {
+      const appointment = await this.appointmentRepo.findById(appointmentId, tx);
 
-    if (appointment.status === 'CANCELLED') {
-      throw new BadRequestError('Não é possível editar orientações de preparo de um agendamento cancelado');
-    }
+      if (!appointment) {
+        throw new NotFoundError('Agendamento não encontrado');
+      }
 
-    return this.appointmentRepo.updatePreparationNotes(appointmentId, preparationNotes);
+      if (appointment.status === 'CANCELLED') {
+        throw new BadRequestError('Não é possível editar orientações de preparo de um agendamento cancelado');
+      }
+
+      return tx && tx !== this.appointmentRepo
+        ? this.appointmentRepo.updatePreparationNotes(appointmentId, preparationNotes, tx)
+        : this.appointmentRepo.updatePreparationNotes(appointmentId, preparationNotes);
+    });
   }
 
   async confirmAttendance(appointmentId: string, patientId: string) {
-    const appointment = await this.appointmentRepo.findById(appointmentId);
+    const runTx = this.appointmentRepo.transaction
+      ? this.appointmentRepo.transaction.bind(this.appointmentRepo)
+      : async <T>(cb: (tx?: any) => Promise<T>) => cb(undefined);
 
-    if (!appointment) {
-      throw new NotFoundError('Agendamento não encontrado');
-    }
+    return runTx(async (tx) => {
+      const appointment = await this.appointmentRepo.findById(appointmentId, tx);
 
-    if (appointment.patientId !== patientId) {
-      throw new BadRequestError('Você só pode confirmar a presença dos seus próprios exames');
-    }
+      if (!appointment) {
+        throw new NotFoundError('Agendamento não encontrado');
+      }
 
-    if (appointment.status === 'CANCELLED') {
-      throw new BadRequestError('Não é possível confirmar presença em um agendamento cancelado');
-    }
+      if (appointment.patientId !== patientId) {
+        throw new BadRequestError('Você só pode confirmar a presença dos seus próprios exames');
+      }
 
-    // Regra estrita: só permite confirmar a partir de 2 dias antes do exame
-    const now = new Date();
-    const apptDate = new Date(appointment.dateTime);
-    const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
-    const diff = apptDate.getTime() - now.getTime();
+      if (appointment.status === 'CANCELLED') {
+        throw new BadRequestError('Não é possível confirmar presença em um agendamento cancelado');
+      }
 
-    if (diff > twoDaysInMs) {
-      throw new BadRequestError(
-        'A confirmação de presença só é liberada a partir de 2 dias (48 horas) antes do exame para garantir pontualidade.'
-      );
-    }
+      // Regra estrita: só permite confirmar a partir de 2 dias antes do exame
+      const now = new Date();
+      const apptDate = new Date(appointment.dateTime);
+      const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
+      const diff = apptDate.getTime() - now.getTime();
 
-    if (diff < 0) {
-      throw new BadRequestError('Não é possível confirmar a presença de um exame que já ocorreu');
-    }
+      if (diff > twoDaysInMs) {
+        throw new BadRequestError(
+          'A confirmação de presença só é liberada a partir de 2 dias (48 horas) antes do exame para garantir pontualidade.'
+        );
+      }
 
-    return this.appointmentRepo.confirmAttendance(appointmentId, now);
+      if (diff < 0) {
+        throw new BadRequestError('Não é possível confirmar a presença de um exame que já ocorreu');
+      }
+
+      return tx && tx !== this.appointmentRepo
+        ? this.appointmentRepo.confirmAttendance(appointmentId, now, tx)
+        : this.appointmentRepo.confirmAttendance(appointmentId, now);
+    });
   }
 }

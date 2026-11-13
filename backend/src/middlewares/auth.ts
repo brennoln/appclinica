@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UnauthorizedError, ForbiddenError } from '../errors/AppError.js';

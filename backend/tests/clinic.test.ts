@@ -105,7 +105,7 @@ describe('Desafio Técnico - Testes de Integração E2E', () => {
   it('1. Duas tentativas simultâneas de agendamento no mesmo horário: apenas uma deve ser aceita', async () => {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + 10);
-    targetDate.setHours(14, 0, 0, 0);
+    targetDate.setUTCHours(14, 0, 0, 0);
 
     const p1 = request(app)
       .post('/api/appointments')
@@ -136,7 +136,7 @@ describe('Desafio Técnico - Testes de Integração E2E', () => {
   it('2. Um paciente tenta consultar um laudo de outro paciente: o acesso deve ser negado (403)', async () => {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 11);
-    futureDate.setHours(10, 0, 0, 0);
+    futureDate.setUTCHours(10, 0, 0, 0);
 
     const apptRes = await request(app)
       .post('/api/appointments')
@@ -172,7 +172,7 @@ describe('Desafio Técnico - Testes de Integração E2E', () => {
   it('3. Um paciente tenta acessar um rascunho do seu próprio exame: seu conteúdo não deve ser disponibilizado', async () => {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 12);
-    futureDate.setHours(11, 30, 0, 0);
+    futureDate.setUTCHours(11, 30, 0, 0);
 
     const apptRes = await request(app)
       .post('/api/appointments')
@@ -208,7 +208,7 @@ describe('Desafio Técnico - Testes de Integração E2E', () => {
   it('4. Um laudo é publicado e passa a estar disponível para o paciente correto', async () => {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 13);
-    futureDate.setHours(15, 0, 0, 0);
+    futureDate.setUTCHours(15, 0, 0, 0);
 
     const apptRes = await request(app)
       .post('/api/appointments')
@@ -266,7 +266,7 @@ describe('Desafio Técnico - Testes de Integração E2E', () => {
   it('Deve permitir reutilizar o horário de um agendamento cancelado', async () => {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + 14);
-    targetDate.setHours(16, 0, 0, 0);
+    targetDate.setUTCHours(16, 0, 0, 0);
 
     // 1. Cria agendamento inicial
     const appt1 = await request(app)
@@ -515,5 +515,20 @@ describe('Desafio Técnico - Testes de Integração E2E', () => {
     expect(listRes.status).toBe(200);
     expect(listRes.body).toHaveLength(1);
     expect(listRes.body[0].id).toBe(createRes.body.id);
+  });
+
+  // Cenário Extra 5: Filtro de data inválido e JSON malformado devem retornar 400 (nunca 500)
+  it('Deve retornar 400 para filtro de data malformado ou JSON inválido sem gerar erro 500', async () => {
+    const badDateRes = await request(app)
+      .get('/api/appointments?date=data-invalida')
+      .set('Authorization', `Bearer ${clinicToken}`);
+    expect(badDateRes.status).toBe(400);
+
+    const badJsonRes = await request(app)
+      .post('/api/appointments')
+      .set('Authorization', `Bearer ${clinicToken}`)
+      .set('Content-Type', 'application/json')
+      .send('{"patientId": "incompleto"');
+    expect(badJsonRes.status).toBe(400);
   });
 });

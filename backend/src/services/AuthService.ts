@@ -1,6 +1,8 @@
+import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { UserRepository } from '../repositories/index.js';
+import { withWriteLock } from '../config/database.js';
 import { UnauthorizedError, NotFoundError, ConflictError } from '../errors/AppError.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret';
@@ -60,16 +62,19 @@ export class AuthService {
   }
 
   async registerPatient(name: string, email: string, password = '123456') {
-    const existing = await this.userRepo.findByEmail(email);
-    if (existing) {
-      throw new ConflictError('Já existe um usuário cadastrado com este e-mail');
-    }
-
     const hashedPassword = await bcrypt.hash(password, 10);
-    return this.userRepo.createPatient({
-      name,
-      email,
-      password: hashedPassword,
+
+    return withWriteLock(async () => {
+      const existing = await this.userRepo.findByEmail(email);
+      if (existing) {
+        throw new ConflictError('Já existe um usuário cadastrado com este e-mail');
+      }
+
+      return this.userRepo.createPatient({
+        name,
+        email,
+        password: hashedPassword,
+      });
     });
   }
 }

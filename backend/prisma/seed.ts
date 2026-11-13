@@ -41,13 +41,14 @@ async function main() {
     },
   });
 
-  // Cria datas com fuso horário local de São Paulo (-03:00)
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const year = tomorrow.getFullYear();
-  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-  const day = String(tomorrow.getDate()).padStart(2, '0');
-  const datePrefix = `${year}-${month}-${day}`;
+  // Cria datas com fuso horário local de São Paulo (-03:00), independente do fuso da máquina host
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const datePrefix = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(tomorrow);
 
   // Slot 1: 09:00 no Brasil (-03:00)
   const slot1 = new Date(`${datePrefix}T09:00:00-03:00`);

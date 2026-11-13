@@ -40,7 +40,7 @@ describe('AppointmentService (Testes Unitários)', () => {
     it('deve rejeitar agendamentos que não respeitam intervalos de 30 minutos', async () => {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + 2);
-      futureDate.setHours(10, 15, 0, 0); // 10:15 não é múltiplo de 30 minutos
+      futureDate.setUTCHours(10, 15, 0, 0); // 10:15 não é múltiplo de 30 minutos
 
       await expect(
         appointmentService.createAppointment({
@@ -54,7 +54,7 @@ describe('AppointmentService (Testes Unitários)', () => {
     it('deve lançar NotFoundError caso o paciente não exista ou não possua perfil PATIENT', async () => {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + 2);
-      futureDate.setHours(10, 0, 0, 0);
+      futureDate.setUTCHours(10, 0, 0, 0);
 
       mockUserRepo.findById.mockResolvedValue(null);
 
@@ -70,7 +70,7 @@ describe('AppointmentService (Testes Unitários)', () => {
     it('deve lançar ConflictError caso já exista agendamento ativo no mesmo horário', async () => {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + 2);
-      futureDate.setHours(10, 0, 0, 0);
+      futureDate.setUTCHours(10, 0, 0, 0);
 
       mockUserRepo.findById.mockResolvedValue({ id: 'patient-uuid', role: 'PATIENT' });
       mockAppointmentRepo.findActiveByDateTime.mockResolvedValue({ id: 'existing-appt-id' });
@@ -87,7 +87,7 @@ describe('AppointmentService (Testes Unitários)', () => {
     it('deve criar o agendamento com sucesso quando os dados forem válidos e o horário estiver livre', async () => {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + 2);
-      futureDate.setHours(10, 0, 0, 0);
+      futureDate.setUTCHours(10, 0, 0, 0);
 
       mockUserRepo.findById.mockResolvedValue({ id: 'patient-uuid', role: 'PATIENT' });
       mockAppointmentRepo.findActiveByDateTime.mockResolvedValue(null);

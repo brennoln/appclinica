@@ -4,5 +4,7 @@ build/
 .env
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 *.log
 .DS_Store

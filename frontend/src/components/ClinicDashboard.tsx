@@ -422,13 +422,13 @@ export const ClinicDashboard: React.FC = () => {
                         </td>
 
                         <td className="px-4 py-3 whitespace-nowrap">
-                          {hasPublishedReport && (
+                          {hasPublishedReport && !isCancelled && (
                             <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
                               Publicado
                             </span>
                           )}
-                          {hasDraftReport && (
+                          {hasDraftReport && !isCancelled && (
                             <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
                               <FileEdit className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
                               Rascunho
