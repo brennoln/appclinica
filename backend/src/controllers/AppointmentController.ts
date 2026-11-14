@@ -5,7 +5,13 @@ import { AppointmentService, VALID_EXAM_TYPES } from '../services/AppointmentSer
 const createAppointmentSchema = z.object({
   patientId: z.string().uuid('ID do paciente inválido'),
   examType: z.enum(VALID_EXAM_TYPES),
-  dateTime: z.string().datetime({ offset: true, message: 'Data e horário devem estar em formato ISO 8601' }),
+  dateTime: z
+    .string()
+    .trim()
+    .regex(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})?$/i,
+      'Data e horário devem estar em formato ISO 8601'
+    ),
   preparationNotes: z.string().optional(),
 });
 

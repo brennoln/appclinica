@@ -194,21 +194,21 @@ A aplicação estará disponível em:
 
 ## 🧪 Suíte de Testes Automatizados
 
-O sistema conta com uma cobertura completa de **testes automatizados (22 testes)** utilizando **Vitest** e **Supertest**, divididos em testes unitários puros com dublês de teste (mocks) e testes de integração de ponta a ponta:
+O sistema conta com uma cobertura completa de **testes automatizados (33 testes)** utilizando **Vitest** e **Supertest** em um banco de dados de testes isolado (`test.db`, preservando integralmente os dados de demonstração do `dev.db`), divididos em testes unitários de serviços e testes de integração E2E:
 
 ```bash
 npm test
 ```
 
 ### Cenários Validados nos Testes:
-- ✅ **Concorrência Atômica:** Duas tentativas simultâneas de agendamento no mesmo horário resultam em apenas uma aprovada (`201`) e a outra rejeitada por conflito (`409`).
-- ✅ **Isolamento de Segurança (IDOR):** Paciente tentando consultar laudo pertencente a outro paciente tem acesso negado (`403 Forbidden`).
-- ✅ **Confidencialidade de Rascunhos:** Paciente tentando acessar um laudo em rascunho de seu próprio exame tem o acesso bloqueado (`403 Forbidden`).
+- ✅ **Concorrência Atômica e Estresse (10x em Lotes):** Tentativas simultâneas de agendamento no mesmo horário (2 e 10 requisições concorrentes em múltiplos lotes) resultam em apenas 1 aprovada (`201`) e as demais rejeitadas por conflito (`409`), sem erros `500`.
+- ✅ **Bloqueio de Publicação após Cancelamento (Sequencial e Concorrente):** Cancelar um exame enquanto o rascunho está aberto impede sua publicação (`400`) e o acesso pelo paciente (`403`); cancelar e publicar simultaneamente nunca produz o estado inválido `CANCELLED + PUBLISHED`.
+- ✅ **Consistência de Fuso Horário (`America/Sao_Paulo`):** Datas enviadas com ou sem offset são processadas estritamente no fuso oficial da clínica (`UTC-3`), independentemente do fuso horário configurado no navegador ou sistema operacional.
+- ✅ **Isolamento de Segurança (IDOR & RBAC):** Paciente tentando consultar laudo de outro paciente ou acionar rotas exclusivas da clínica recebe `403 Forbidden`.
+- ✅ **Confidencialidade de Rascunhos:** Paciente tentando acessar um laudo em rascunho de seu próprio exame (diretamente ou via listagem) tem o conteúdo bloqueado (`403 Forbidden`).
 - ✅ **Publicação e Disponibilidade:** Laudo publicado pela clínica passa a estar imediatamente disponível para o paciente correto.
-- ✅ **Validação Temporal de Passado:** Rejeição de agendamentos em horários passados (`400 Bad Request`).
+- ✅ **Validação Temporal, Calendário e Intervalos:** Rejeição de agendamentos no passado, datas inexistentes no calendário (ex: `30/02`) e horários fora da grade de 30 minutos (`400 Bad Request`).
 - ✅ **Reaproveitamento de Horários:** Horário de um agendamento cancelado é liberado com sucesso para um novo paciente.
-- ✅ **Padronização de Intervalos:** Bloqueio de agendamentos fora da grade de 30 minutos.
-- ✅ **Imutabilidade e Regras de Negócio:** Bloqueio de cancelamento de exames com laudo emitido e bloqueio de edição em laudos já publicados.
 
 ---
 

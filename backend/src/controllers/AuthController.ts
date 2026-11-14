@@ -3,13 +3,13 @@ import { z } from 'zod';
 import { AuthService } from '../services/AuthService.js';
 
 const loginSchema = z.object({
-  email: z.string().email('E-mail em formato inválido'),
+  email: z.string().trim().toLowerCase().email('E-mail em formato inválido'),
   password: z.string().min(1, 'A senha é obrigatória'),
 });
 
 const createPatientSchema = z.object({
-  name: z.string().min(2, 'O nome do paciente deve ter pelo menos 2 caracteres'),
-  email: z.string().email('E-mail em formato inválido'),
+  name: z.string().trim().min(2, 'O nome do paciente deve ter pelo menos 2 caracteres'),
+  email: z.string().trim().toLowerCase().email('E-mail em formato inválido'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres').optional(),
 });
 

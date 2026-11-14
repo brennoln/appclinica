@@ -11,6 +11,20 @@ export interface CreateAppointmentDTO {
   preparationNotes?: string;
 }
 
+function isValidCalendarDate(dateStr: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return (
+    d.getUTCFullYear() === year &&
+    d.getUTCMonth() === month - 1 &&
+    d.getUTCDate() === day
+  );
+}
+
 export class AppointmentService {
   constructor(
     private readonly appointmentRepo: AppointmentRepository = new AppointmentRepository(),
@@ -19,6 +33,11 @@ export class AppointmentService {
 
   async createAppointment(dto: CreateAppointmentDTO) {
     const rawDateTime = dto.dateTime.trim();
+    const datePrefix = rawDateTime.slice(0, 10);
+    if (!isValidCalendarDate(datePrefix)) {
+      throw new BadRequestError('Data e horário informados são inválidos');
+    }
+
     const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(rawDateTime);
     const normalizedDateTime = hasTimezone ? rawDateTime : `${rawDateTime}-03:00`;
     const targetDate = new Date(normalizedDateTime);
@@ -81,7 +100,7 @@ export class AppointmentService {
     let endDate: Date | undefined = undefined;
 
     if (filters.date) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(filters.date)) {
+      if (!isValidCalendarDate(filters.date)) {
         throw new BadRequestError('Formato de data inválido. Use AAAA-MM-DD');
       }
       startDate = new Date(`${filters.date}T00:00:00.000-03:00`);

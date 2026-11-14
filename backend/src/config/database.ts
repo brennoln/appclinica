@@ -14,14 +14,20 @@ export const prisma = new PrismaClient({
   },
 });
 
-// Configura PRAGMAs do SQLite para suportar leituras e escritas concorrentes sem bloqueio prematuro
-prisma.$queryRawUnsafe('PRAGMA journal_mode = WAL;').catch(() => {});
-prisma.$queryRawUnsafe('PRAGMA busy_timeout = 10000;').catch(() => {});
-prisma.$queryRawUnsafe('PRAGMA foreign_keys = ON;').catch(() => {});
+// Configura PRAGMAs do SQLite sequencialmente antes da primeira operação de escrita
+const initPragmas = async () => {
+  try {
+    await prisma.$queryRawUnsafe('PRAGMA journal_mode = WAL;');
+    await prisma.$queryRawUnsafe('PRAGMA busy_timeout = 10000;');
+    await prisma.$queryRawUnsafe('PRAGMA foreign_keys = ON;');
+  } catch {
+    // Ignora caso o banco ainda esteja sendo inicializado
+  }
+};
 
 // Fila de serialização em memória com retry para transações de escrita no SQLite,
 // evitando erros de bloqueio (SQLITE_BUSY / P2034) e condições de corrida sob alta concorrência.
-let writeQueue: Promise<unknown> = Promise.resolve();
+let writeQueue: Promise<unknown> = initPragmas();
 
 export function withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
   const runWithRetry = async (): Promise<T> => {

@@ -3,9 +3,9 @@ import { z } from 'zod';
 import { ReportService } from '../services/ReportService.js';
 
 const saveReportSchema = z.object({
-  title: z.string().min(1, 'Título é obrigatório'),
-  content: z.string().min(1, 'Texto do laudo é obrigatório'),
-  doctorName: z.string().min(1, 'Nome do profissional responsável é obrigatório'),
+  title: z.string().trim().min(1, 'Título é obrigatório'),
+  content: z.string().trim().min(1, 'Texto do laudo é obrigatório'),
+  doctorName: z.string().trim().min(1, 'Nome do profissional responsável é obrigatório'),
   status: z.enum(['DRAFT', 'PUBLISHED']),
 });
 

@@ -4,14 +4,20 @@
   "description": "Backend API para Desafio Técnico - Clínica",
   "main": "dist/server.js",
   "scripts": {
+    "ensure-env": "node -e \"const fs=require('fs');if(!fs.existsSync('.env')&&fs.existsSync('.env.example'))fs.copyFileSync('.env.example','.env')\"",
+    "postinstall": "npm run ensure-env",
+    "predev": "npm run ensure-env",
+    "prebuild": "npm run ensure-env",
+    "prestart": "npm run ensure-env",
+    "pretest": "npm run ensure-env",
     "dev": "tsx watch src/server.ts",
     "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:push": "prisma db push"
+    "db:migrate": "npm run ensure-env && prisma migrate dev",
+    "db:seed": "npm run ensure-env && tsx prisma/seed.ts",
+    "db:push": "npm run ensure-env && prisma db push"
   },
   "keywords": [],
   "author": "",
